@@ -1,0 +1,64 @@
+<div class="row">
+    <div class="col-lg-4">
+        {{ form_start(form) }}
+        {{ form_row(form.externalid,{'label': '外部 ID','help': '留空则自动生成'}) }}
+        {{ form_row(form.icpcid,{'help': '(可选)队伍在 ICPC CMS 中的 ID'})}}
+        {{ form_row(form.label,{'label': '编号','help': '(可选)例如座位号'})  }}
+        {{ form_row(form.name,{'label': '名称'})  }}
+        {{ form_row(form.displayName,{'label': '显示名称','help': '如果填写，在榜单等位置会显示此名称而不是队伍名称'})}}
+        {{ form_row(form.category,{'label': '类别'}) }}
+        {{ form_row(form.publicdescription,{'label': '公共描述'}) }}
+        {{ form_row(form.affiliation,{'label': '所属机构'}) }}
+        {{ form_row(form.penalty,{'label': '罚时'}) }}
+        {{ form_row(form.location,{'label': '地点'}) }}
+        {{ form_row(form.internalcomments,{'label': '内部描述(仅管理员可查看)'}) }}
+        {{ form_row(form.contests,{'label': '参加的比赛'}) }}
+        {{ form_row(form.enabled,{'label': '是否启用'}) }}
+        {% if form.offsetExists('existingUser') %}
+            {{ form_row(form.addUserForTeam,{'label': '为团队添加用户'}) }}
+            <div data-existing-user>
+                {{ form_row(form.existingUser,{'label': '选择已有用户'}) }}
+            </div>
+            <div data-new-username>
+                {{ form_row(form.newUsername,{'label': '新用户用户名','attr': {'placeholder': '输入用户名'}}) }}
+            </div>
+        {% endif %}
+        {{ form_end(form) }}
+    </div>
+</div>
+
+<script>
+    $(function () {
+        var $addUserForTeam = $('#team_addUserForTeam');
+    
+        $addUserForTeam.find('option[value="dont-add-user"]').text('不添加用户');
+        $addUserForTeam.find('option[value="create-new-user"]').text('创建新用户');
+        $addUserForTeam.find('option[value="add-existing-user"]').text('添加已有用户');
+    
+        var addUserForTeamChanged = function () {
+            var $existingUserField = $('[data-existing-user]');
+            var $newUsernameField = $('[data-new-username]');
+    
+            switch ($addUserForTeam.val()) {
+                case 'dont-add-user':
+                    $existingUserField.hide();
+                    $newUsernameField.hide();
+                    $newUsernameField.find('input').attr('required', false);
+                    break;
+                case 'create-new-user':
+                    $existingUserField.hide();
+                    $newUsernameField.show();
+                    $newUsernameField.find('input').attr('required', true);
+                    break;
+                case 'add-existing-user':
+                    $existingUserField.show();
+                    $newUsernameField.hide();
+                    $newUsernameField.find('input').attr('required', false);
+                    break;
+            }
+        };
+    
+        $addUserForTeam.on('change', addUserForTeamChanged);
+        addUserForTeamChanged();
+    });
+</script>

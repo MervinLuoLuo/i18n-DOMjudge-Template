@@ -1,0 +1,49 @@
+{% extends "partials/modal.html.twig" %}
+
+{% block title %}
+    {% if count > 1 %}
+        删除 {{ count }} {% if type|slice(-1) == 'y' %}{{ type|slice(0, -1) }}ies{% else %}{{ type }}s{% endif %}
+    {% else %}
+        删除 {{ type }} {{ primaryKey }} - "{{ description }}"
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+
+    {% if isError %}
+        <div class="alert alert-danger">
+            <strong>错误：{{ messages.0 }}</strong>
+        </div>
+    {% else %}
+        {% if count > 1 %}
+            <p>即将删除以下 {{ count }} {% if type|slice(-1) == 'y' %}{{ type|slice(0, -1) }}ies{% else %}{{ type }}s{% endif %}:</p>
+            <ul>
+                {% for desc in description|split(',') %}
+                    <li>{{ desc|trim }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>即将删除 {{ type }} {{ primaryKey }} "{{ description }}"。</p>
+        {% endif %}
+
+        {% if messages is not empty %}
+            <p>
+                <strong>警告，此操作将：</strong>
+            </p>
+            <ul>
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        <p>确定吗？</p>
+    {% endif %}
+
+{% endblock %}
+
+{% block closeButtonText %}
+    {% if isError %}确定{% else %}取消{% endif %}
+{% endblock %}
+
+{% block buttonText %}删除{% endblock %}

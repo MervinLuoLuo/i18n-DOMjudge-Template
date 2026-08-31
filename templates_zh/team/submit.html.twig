@@ -1,0 +1,31 @@
+{% extends 'team/base.html.twig' %}
+
+{% block title %}提交 - {{ parent() }}{% endblock %}
+
+{% block content %}
+    <div class="container submitform pt-5">
+        {% if current_team_contest is not empty and not current_team_contest.allowSubmit %}
+            {% include 'partials/alert.html.twig' with {'type': 'danger', 'message': '提交功能（暂时）已禁用。'} %}
+        {% else %}
+            <h1 class="text-center">提交{% if problem is not null %}题目 {{ problem.name }}{% endif %}</h1>
+            {% if current_team_contest is empty or (not is_granted('ROLE_JURY') and not current_team_contest.freezeData.started) %}
+                <div class="container submitform">
+                    <div class="alert alert-danger" role="alert">比赛尚未开始，无法提交。</div>
+                </div>
+            {% else %}
+
+                {{ form_start(form) }}
+                {{ form_row(form.code, {'label': '代码文件'}) }}
+                {{ form_row(form.problem, {'label': '题目'}) }}
+                {{ form_row(form.language, {'label': '语言'}) }}
+                {{ form_row(form.entry_point, {'label': '入口点'}) }}
+                <div class="mb-3">
+                    <button type="submit" class="btn-success btn"><i class="fas fa-cloud-upload-alt"></i> 提交</button>
+                </div>
+                {{ form_end(form) }}
+
+            {% endif %}
+        {% endif %}
+
+    </div>
+{% endblock %}

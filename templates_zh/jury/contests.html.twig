@@ -1,0 +1,152 @@
+{% extends "jury/base.html.twig" %}
+{% import "jury/jury_macros.twig" as macros %}
+
+{% block title %}比赛 - {{ parent() }}{% endblock %}
+
+{% block extrahead %}
+    {{ parent() }}
+    {{ macros.table_extrahead() }}
+    {{ macros.toggle_extrahead() }}
+{% endblock %}
+
+{% set time_button_labels = {
+    'activate': '立即启用',
+    'start': '立即开始',
+    'freeze': '立即榜',
+    'end': '立即结束',
+    'unfreeze': '立即解榜',
+    'finalize': '立即定级',
+    'deactivate': '立即停用',
+    'delay_start': '延迟开始',
+    'resume_start': '恢复开始'
+} %}
+
+{% block content %}
+    <h1>比赛</h1>
+
+    <h3>当前比赛</h3>
+
+    {% for contest in current_contests %}
+        <div class="row mb-4">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        {{ contest.name }} ({{ contest.shortname }} - c{{ contest.cid }})
+                        {% if contest.locked %}
+                            <i class="fas fa-lock"></i>
+                        {% endif %}
+                        <a class="fa-regular fa-folder-open" style="float: right; color: black" href={{ path('jury_contest', {'contestId': contest.cid}) }}></a>
+                    </div>
+                    <div class="card-body">
+                        {% if not contest.starttimeEnabled and contest.finalizetime is not empty %}
+                            <div class="alert alert-warning">
+                                <strong>警告：</strong> 开始时间未定义，但比赛已定级
+                            </div>
+                        {% endif %}
+                        <table class="table table-hover">
+                            <tbody>
+                            {% for type, data in contest.dataForJuryInterface %}
+                                <tr>
+                                    <td class="{{ data.class|default('') }}">
+                                        {% if data.icon is defined %}
+                                            <i class="fas fa-{{ data.icon }}"></i>
+                                        {% endif %}
+                                    </td>
+                                    {% set time_labels = {
+                                        'activate': '启用时间',
+                                        'start': '开始时间',
+                                        'freeze': '封榜时间',
+                                        'end': '结束时间',
+                                        'unfreeze': '解榜时间',
+                                        'finalize': '定级时间',
+                                        'deactivate': '停用时间'
+                                    } %}
+
+                                    <td class="{{ data.class|default('') }}"><b>{{ time_labels[type]|default(data.label) }}:</b></td>
+                                    <td class="{{ data.class|default('') }}">{{ data.time }}</td>
+                                    {% if is_granted('ROLE_ADMIN') %}
+                                        <td>
+                                            {% if data.show_button %}
+                                                {{ button(
+                                                    path('jury_contest_donow', {'contestId': contest.cid, 'time': type}),
+                                                    time_button_labels[type]|default(type ~ ' now'),
+                                                    'primary btn-sm'
+                                                ) }}
+                                            {% endif %}
+                                            {% if data.extra_button is defined %}
+                                                {{ button(
+                                                    path('jury_contest_donow', {'contestId': contest.cid, 'time': data.extra_button.type}),
+                                                    time_button_labels[data.extra_button.type]|default(data.extra_button.label),
+                                                    'primary btn-sm'
+                                                ) }}
+                                            {% endif %}
+                                        </td>
+                                    {% endif %}
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        {% if upcoming_contest is empty %}
+            <div class="alert alert-danger">没有即将开始的比赛</div>
+        {% else %}
+            <div class="alert alert-warning">
+                <strong>没有进行中的比赛。</strong>即将开始：<br/>
+                <p>
+                    <i>{{ upcoming_contest.name }} ({{ upcoming_contest.shortname }})</i>;
+                    自以下时间激活 {{ upcoming_contest.activatetime | printtime('D d M Y H:i:s T') }}
+                </p>
+                {{ button(
+                    path('jury_contest_donow', {'contestId': upcoming_contest.cid, 'time': 'activate'}),
+                    time_button_labels['activate']|default('Activate now'),
+                    'primary'
+                ) }}
+            </div>
+        {% endif %}
+    {% endfor %}
+
+    <h3>所有可用比赛</h3>
+
+    {% set contest_title_map = {
+        'CID': 'CID',
+        'external ID': '外部 ID',
+        'shortname': '简称',
+        'name': '名称',
+        'scoreboard type': '榜单类型',
+        'activate': '启用时间',
+        'start': '开始时间',
+        'end': '结束时间',
+        '# removed intervals': '移除时间段数',
+        'process balloons?': '是否分发气球',
+        'medals?': '是否颁发奖牌',
+        'public?': '是否公开',
+        '# teams': '队伍数',
+        '# problems': '题目数'
+    } %}
+    
+    {% set zh_table_fields = {} %}
+    {% for key, field in table_fields %}
+        {% set title_key = field.title|replace({"\n": ' '}) %}
+        {% set zh_table_fields = zh_table_fields|merge({
+            (key): field|merge({'title': contest_title_map[title_key]|default(field.title)})
+        }) %}
+    {% endfor %}
+    
+    {{ macros.table(contests_table, zh_table_fields) }}
+
+    {% if is_granted('ROLE_ADMIN') %}
+        <p>
+            {{ button(path('jury_contest_add'), '创建新的比赛', 'primary', 'plus') }}
+            {{ button(path('jury_import_export', {'_fragment':'contests'}), '导入比赛', 'primary', 'upload') }}
+        </p>
+    {% endif %}
+
+{% endblock %}
+
+{% block extrafooter %}
+    {{ macros.toggle_autosubmit_extrafooter() }}
+{% endblock %}

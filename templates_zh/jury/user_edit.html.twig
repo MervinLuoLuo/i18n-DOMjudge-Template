@@ -1,0 +1,32 @@
+{% extends "jury/base.html.twig" %}
+{% import "jury/jury_macros.twig" as macros %}
+
+{% block title %}编辑用户 {{ user.userid }} - {{ parent() }}{% endblock %}
+
+{% block extrahead %}
+    {{ parent() }}
+    {{ macros.table_extrahead() }}
+{% endblock %}
+
+{% block content %}
+
+    <h1>编辑用户 {{ user.userid }}</h1>
+
+    <div class="row">
+        <div class="col-lg-4">
+            <table class="table table-sm table-striped">
+                <tr>
+                    <th>用户 ID</th>
+                    <td>{{ user.userid }}</td>
+                </tr>
+                <tr>
+                    <th>用户名</th>
+                    <td class="teamid">{{ user.username }}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    {% include 'jury/partials/user_form.html.twig' %}
+
+{% endblock %}

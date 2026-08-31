@@ -1,0 +1,49 @@
+{% extends "jury/base.html.twig" %}
+{% import "jury/jury_macros.twig" as macros %}
+
+{% block title %}编辑 s{{ submission.submitid }} 的源码 - {{ parent() }}{% endblock %}
+
+{% block content %}
+
+    <h1>编辑提交任务<a href="{{ path('jury_submission', {submitId: submission.submitid}) }}">s{{ submission.submitid }}</a>的源文件</h1>
+
+    {{ form_start(form) }}
+
+    <ul class="nav nav-tabs source-tab-nav">
+        {%- for file in files %}
+
+            <li class="nav-item">
+                <a class="nav-link {% if (selected is null and loop.first) or selected == file.rank %}active{% endif %}"
+                   data-bs-toggle="tab" href="#source-{{ file.rank }}" role="tab">{{ file.filename }}</a>
+            </li>
+        {%- endfor %}
+
+    </ul>
+    <div class="tab-content source-tab">
+        {%- for idx, file in files %}
+
+            <div class="tab-pane fade {% if (selected is null and loop.first) or selected == file.rank %}show active{% endif %}"
+                 id="source-{{ file.rank }}" role="tabpanel">
+                {{ file.sourcecode | codeEditor(idx, submission.language.editorLanguage, true, 'form_source' ~ file.rank) }}
+                <script>
+                    $(function () {
+                        $('#form_source{{ file.rank }}').closest('div.mb-3').hide();
+                    });
+                </script>
+            </div>
+        {%- endfor %}
+
+    </div>
+
+    <div class="row">
+        <div class="col-lg-4">
+            {{ form_row(form.problem, {'label': '题目'}) }}
+            {{ form_row(form.language, {'label': '编程语言'}) }}
+            {{ form_row(form.entry_point, {'label': '可选入点'}) }}
+            {{ form_row(form.submit, {'label': '重新提交'}) }}
+            {{ form_rest(form) }}
+        </div>
+    </div>
+    {{ form_end(form) }}
+
+{% endblock %}

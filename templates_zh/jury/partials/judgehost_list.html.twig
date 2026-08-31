@@ -1,0 +1,19 @@
+{% import "jury/jury_macros.twig" as macros %}
+
+{% set judgehost_title_map = {
+    'ID': 'ID',
+    'hostname': '主机名',
+    'enabled': '启用状态',
+    'status': '状态',
+    'load (5m/15m/1h/5h)': '负载 (5m/15m/1h/5h)',
+    'last judging': '最近评测任务'
+} %}
+
+{% set zh_table_fields = {} %}
+{% for key, field in table_fields %}
+    {% set zh_table_fields = zh_table_fields|merge({
+        (key): field|merge({'title': judgehost_title_map[field.title]|default(field.title)})
+    }) %}
+{% endfor %}
+
+{{ macros.table(judgehosts, zh_table_fields, {ordering: 'false'}) }}

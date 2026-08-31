@@ -1,0 +1,20 @@
+{% extends "team/base.html.twig" %}
+
+{% block title %}打印 - {{ parent() }}{% endblock %}
+
+{% block content %}
+
+    <div class="container submitform pt-5">
+        <h1 class="text-center">打印文件</h1>
+        {{ form_start(form) }}
+        {{ form_row(form.code, {'label': '文件'}) }}
+        {{ form_row(form.langid, {'label': '语言'}) }}
+        {{ form_widget(form.print, {'label': '打印代码'}) }}
+        {{ form_end(form) }}
+    </div>
+
+{% endblock %}
+
+{% block extrafooter %}
+    {% include 'partials/javascript_print.html.twig' %}
+{% endblock %}

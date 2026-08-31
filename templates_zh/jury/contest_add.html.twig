@@ -1,0 +1,20 @@
+{% extends "jury/base.html.twig" %}
+{% import "jury/jury_macros.twig" as macros %}
+
+{% block title %}添加比赛 - {{ parent() }}{% endblock %}
+
+{% block extrahead %}
+    {{ parent() }}
+    {{ macros.select2_extrahead() }}
+    {{ macros.coloris_extrahead() }}
+{% endblock %}
+
+{% block content %}
+
+    <h1>添加比赛</h1>
+
+    {% include 'jury/partials/contest_form.html.twig' %}
+
+    {{ macros.collection_scripts() }}
+
+{% endblock %}

@@ -1,0 +1,137 @@
+{% extends "jury/base.html.twig" %}
+{% import "jury/jury_macros.twig" as macros %}
+
+{% block title %}内部错误 e{{ internalError.errorid }} - {{ parent() }}{% endblock %}
+
+{% block extrahead %}
+    {{ parent() }}
+    {{ macros.table_extrahead() }}
+{% endblock %}
+
+{% block content %}
+
+    <h1>内部错误 e{{ internalError.errorid }}</h1>
+
+    <div class="row">
+        <div class="col-lg-6">
+            <table class="table table-sm table-striped">
+                <tr>
+                    <th>描述</th>
+                    <td>
+                        {% if internalError.description is empty %}
+                            <span class="nodata">无</span>
+                        {% else %}
+                            {{ internalError.description }}
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th>时间</th>
+                    <td>{{ internalError.time | printtime('Y-m-d H:i:s') }}</td>
+                </tr>
+                <tr>
+                    <th>状态</th>
+                    <td>{{ internalError.status | capitalize }}</td>
+                </tr>
+                {% if internalError.judging is not null %}
+                    <tr>
+                        <th>相关评测</th>
+                        <td>
+                            <a href="{{ path('jury_submission_by_judging', {jid: internalError.judging.judgingid}) }}">
+                                j{{ internalError.judging.judgingid }}
+                            </a>
+                        </td>
+                    </tr>
+                {% endif %}
+                {% if internalError.judgingRun is not null %}
+                    <tr>
+                        <th>相关评测运行 / 测试用例</th>
+                        <td>
+                            {% set tc = internalError.judgingRun.testcase %}
+                            <ul>
+                                <li>
+                                    <a href="{{ path('jury_submission_by_judging', {jid: internalError.judging.judgingid}) }}#run-{{ tc.rank }}">
+                                        tc{{ tc.testcaseid }}
+                                    </a>
+                                </li>
+                                <li>
+                                    排名： {{ tc.rank }}
+                                </li>
+                                {% if tc.description is not empty %}
+                                    <li>
+                                        描述： {{ tc.description }}
+                                    </li>
+                                {% endif %}
+                                <li>原始文件名：<code>{{ tc.origInputFilename }}.in</code>
+                                </li>
+                                <li>
+                                    测试用例分组： {{ (tc.sample) ? 'sample' : 'secret' }}
+                                </li>
+                            </ul>
+                        </td>
+                    </tr>
+                {% endif %}
+                {% if internalError.affectedJudgings is not null and internalError.affectedJudgings | length > 1 %}
+                    <tr>
+                        <th>所有受影响的评测</th>
+                        <td>
+                            <ul>
+                            {%- for judging in internalError.affectedJudgings -%}
+                                <li>
+                                    <a href="{{ path('jury_submission_by_judging', {jid: judging.judgingid}) }}">
+                                        j{{ judging.judgingid }}
+                                    </a>
+                                </li>
+                            {%- endfor -%}
+                            </ul>
+                        </td>
+                    </tr>
+                {% endif %}
+                {% if internalError.contest is not null %}
+                    <tr>
+                        <th>相关比赛</th>
+                        <td>
+                            <a href="{{ path('jury_contest', {'contestId': internalError.contest.cid}) }}">
+                                c{{ internalError.contest.cid }}
+                            </a>
+                        </td>
+                    </tr>
+                {% endif %}
+                {% if affectedText is not null %}
+                    <tr>
+                        <th>受影响 {{ internalError.disabled.kind }}</th>
+                        <td>
+                            {% if affectedLink %}
+                                <a href="{{ affectedLink }}">{{ affectedText }}</a>
+                            {% else %}
+                                {{ affectedText }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endif %}
+                <tr>
+                    <th>评测机日志片段</th>
+                    <td>
+                        <pre class="output_text">{{ internalError.judgehostlog | base64_decode }}</pre>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    {% if internalError.status == 'open' %}
+        <form action="{{ path('jury_internal_error_handle', {errorId: internalError.errorid, action: 'ignore'}) }}"
+              method="post" class="d-inline">
+            <button type="submit" class="btn btn-danger">
+                <i class="fas fa-times"></i>忽略错误</button>
+        </form>
+
+        <form action="{{ path('jury_internal_error_handle', {errorId: internalError.errorid, action: 'resolve'}) }}"
+              method="post" class="d-inline">
+            <button type="submit" class="btn btn-success">
+                <i class="fas fa-check"></i> 标记为已解决并重新启用 {{ internalError.disabled.kind }}
+            </button>
+        </form>
+    {% endif %}
+
+{% endblock %}

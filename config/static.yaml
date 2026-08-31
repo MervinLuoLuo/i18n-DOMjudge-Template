@@ -1,0 +1,15 @@
+# Generated from 'static.yaml.in' on Fri Aug  7 11:44:52 AM CST 2026.
+
+parameters:
+    domjudge.version: 9.0.1
+    domjudge.installmethod: tarball
+    domjudge.bindir: /opt/domjudge/domserver/bin
+    domjudge.etcdir: /opt/domjudge/domserver/etc
+    domjudge.webappdir: /opt/domjudge/domserver/webapp
+    domjudge.libdir: /opt/domjudge/domserver/lib
+    domjudge.sqldir: /opt/domjudge/domserver/sql
+    domjudge.vendordir: /opt/domjudge/domserver/webapp/vendor
+    domjudge.logdir: /opt/domjudge/domserver/log
+    domjudge.rundir: /opt/domjudge/domserver/run
+    domjudge.tmpdir: /opt/domjudge/domserver/tmp
+    domjudge.baseurl: http://182.92.208.228/

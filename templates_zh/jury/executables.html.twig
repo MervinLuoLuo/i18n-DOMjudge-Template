@@ -1,0 +1,25 @@
+{% extends "jury/base.html.twig" %}
+{% import "jury/jury_macros.twig" as macros %}
+
+{% block title %}执行脚本 - {{ parent() }}{% endblock %}
+
+{% block extrahead %}
+    {{ parent() }}
+    {{ macros.table_extrahead() }}
+{% endblock %}
+
+{% block content %}
+
+    <h1>已使用的执行脚本</h1>
+    {{ macros.table(executables_used, table_fields, {'ordering': 'false'}) }}
+
+    <h1>未使用的执行脚本</h1>
+    {{ macros.table(executables_unused, table_fields, {'ordering': 'false'}) }}
+
+    {% if is_granted('ROLE_ADMIN') %}
+        <p>
+            {{ button(path('jury_executable_add'), '添加新的运行脚本', 'primary', 'plus') }}
+        </p>
+    {% endif %}
+
+{% endblock %}

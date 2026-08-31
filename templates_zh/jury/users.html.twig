@@ -1,0 +1,38 @@
+{% extends "jury/base.html.twig" %}
+{% import "jury/jury_macros.twig" as macros %}
+
+{% block title %}用户 - {{ parent() }}{% endblock %}
+
+{% block extrahead %}
+    {{ parent() }}
+    {{ macros.table_extrahead() }}
+{% endblock %}
+
+{% block content %}
+
+    <h1>用户</h1>
+
+    {{ macros.table(users, table_fields) }}
+
+    {% if is_granted('ROLE_ADMIN') %}
+        <p class="mt-4">
+            {% include 'jury/partials/_delete_button.html.twig' with {'entities': users} %}
+            {{ button(path('jury_user_add'), '添加用户', 'primary', 'plus') }}
+            {{ button(path('jury_reset_login_status'), '重置所有队伍用户的登录状态', 'secondary', 'refresh') }}
+        </p>
+    {% endif %}
+{% endblock %}
+
+{% block extrafooter %}
+    {{ parent() }}
+    <script src="{{ asset('js/multi-delete.js') }}"></script>
+    <script>
+        $(function() {
+            initializeMultiDelete({
+                buttonSelector: '#delete-selected-button',
+                checkboxClass: 'user-checkbox',
+                deleteUrl: '{{ path('jury_user_delete_multiple') }}'
+            });
+        });
+    </script>
+{% endblock %}

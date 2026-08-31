@@ -1,0 +1,28 @@
+{% extends "jury/base.html.twig" %}
+{% import "jury/jury_macros.twig" as macros %}
+
+{% block title %}{{ action | capitalize }} 应用重测 r{{ rejudging.rejudgingid }} - {{ parent() }}{% endblock %}
+
+{% block extrahead %}
+    {{ parent() }}
+    {{ macros.table_extrahead() }}
+    {{ macros.select2_extrahead() }}
+{% endblock %}
+
+{% block content %}
+
+    <h1>{{ action | capitalize }} 重测中
+        <a href="{{ path('jury_rejudging', {'rejudgingId': rejudging.rejudgingid}) }}">r{{ rejudging.rejudgingid }}</a>
+    </h1>
+
+    {% if action == 'apply' %}
+        {% set progressBarMessage = '应用重测结果需要一些时间，先到处逛逛' %}
+    {% else %}
+        {% set progressBarMessage = '' %}
+    {% endif %}
+    {{ macros.progress_bar(progressBarMessage) }}
+{% endblock %}
+
+{% block extrafooter %}
+    {{ macros.progress_loader(path('jury_rejudging_finish', {rejudgingId: rejudging.rejudgingid, action: action})) }}
+{% endblock %}

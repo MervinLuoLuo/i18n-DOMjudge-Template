@@ -1,0 +1,91 @@
+{% extends "jury/base.html.twig" %}
+{% import "jury/jury_macros.twig" as macros %}
+
+{% block extrahead %}
+    {{ parent() }}
+    {{ macros.select2_extrahead() }}
+{% endblock %}
+
+{% block title %}添加重测任务 - {{ parent() }}{% endblock %}
+
+{% block content %}
+
+    <h1>添加重测任务</h1>
+
+    <div class="row">
+        <div class="col-lg-4">
+            {{ form_start(form) }}
+            {{ form_errors(form) }}
+            
+            {{ form_row(form.reason, {'label': '重测原因'}) }}
+            {{ form_row(form.priority, {'label': '优先级'}) }}
+            {{ form_row(form.repeat, {'label': '重复测试次数'}) }}
+            {{ form_row(form.contests, {'label': '比赛'}) }}
+            {{ form_row(form.problems, {'label': '题目'}) }}
+            {{ form_row(form.languages, {'label': '编程语言'}) }}
+            {{ form_row(form.teams, {'label': '队伍'}) }}
+            {{ form_row(form.users, {'label': '用户'}) }}
+            {{ form_row(form.judgehosts, {'label': '评测机'}) }}
+            {{ form_row(form.verdicts, {'label': '评测结果类型'}) }}
+            {{ form_row(form.after, {
+                'label': '在...之后',
+                'help': '格式 ±[HHH]H:MM[:SS[.uuuuuu]]，为比赛相对时间'
+            }) }}
+            {{ form_row(form.before, {
+                'label': '在...之前',
+                'help': '格式 ±[HHH]H:MM[:SS[.uuuuuu]]，为比赛相对时间'
+            }) }}
+            {{ form_row(form.overshoot, {
+                'label': '额外宽限时间',
+                'help': '单位：秒'
+            }) }}
+            
+            {{ form_row(form.save, {'label': '确认'}) }}
+            {{ form_rest(form) }}
+                        {{ form_end(form) }}
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block extrafooter %}
+    <script>
+        $(function () {
+            $('#rejudging_priority option[value="low"]').text('低');
+            $('#rejudging_priority option[value="default"]').text('默认');
+            $('#rejudging_priority option[value="high"]').text('高');
+
+            var $contests = $('#rejudging_contests');
+            $contests.on('change', function () {
+                var $problems = $('#rejudging_problems');
+                var $teams = $('#rejudging_teams');
+                var $form = $(this).closest('form');
+                var data = {};
+                data[$contests.attr('name')] = $contests.val();
+                data[$problems.attr('name')] = $problems.val();
+                data[$teams.attr('name')] = $teams.val();
+                data['refresh_form'] = true;
+                $.ajax({
+                    url: $form.attr('action'),
+                    type: $form.attr('method'),
+                    data: data,
+                    success: function (html) {
+                        var $newProblems = $(html).find('#rejudging_problems');
+                        $newProblems.closest('div').find('.invalid-feedback').remove();
+                        $('#rejudging_problems').closest('div').replaceWith(
+                            $newProblems.closest('div')
+                        );
+                        $newProblems.select2();
+
+                        var $newTeams = $(html).find('#rejudging_teams');
+                        $newTeams.closest('div').find('.invalid-feedback').remove();
+                        $('#rejudging_teams').closest('div').replaceWith(
+                            $newTeams.closest('div')
+                        );
+                        $newTeams.select2();
+                    }
+                });
+            });
+        });
+    </script>
+{% endblock %}

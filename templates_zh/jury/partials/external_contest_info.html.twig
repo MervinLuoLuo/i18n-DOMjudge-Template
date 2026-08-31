@@ -1,0 +1,121 @@
+<div class="row">
+    <div class="col-lg-6">
+        <table class="table table-sm table-striped">
+            <tr>
+                <th>ID</th>
+                <td>{{ externalContestSource.extsourceid }}</td>
+            </tr>
+            <tr>
+                <th>源码</th>
+                <td>
+                    {{ externalContestSource.getReadableType }}
+                    at
+                    <code>{{ externalContestSource.source }}</code>
+                </td>
+            </tr>
+            {% if externalContestSource.username %}
+                <tr>
+                    <th>用户名</th>
+                    <td><code>{{ externalContestSource.username }}</code></td>
+                </tr>
+            {% endif %}
+            {% if externalContestSource.password %}
+                <tr>
+                    <th>密码</th>
+                    <td>
+                        <code data-password-hidden>
+                            ••••••••
+                        </code>
+                        <code data-password class="d-none">
+                            {{ externalContestSource.password }}
+                        </code>
+                    </td>
+                </tr>
+            {% endif %}
+            <tr>
+                <th>命令</th>
+                <td>
+                    <code>{{ webappDir }}/bin/console import:eventfeed {{ current_contest.cid }}</code>
+                </td>
+            </tr>
+            <tr>
+                <th>状态</th>
+                <td>
+                    {% if not externalContestSource.lastPollTime %}
+                        事件源读取器从未签到。
+                    {% elseif externalContestSource.lastHTTPCode is not same as(200) %}
+                        Received {{ externalContestSource.lastHTTPCode }} HTTP code.
+                    {% else %}
+                        {{ status }}, last checked in {{ externalContestSource.lastPollTime | printtimediff }}s ago.
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th>最后事件 ID</th>
+                <td>
+                    {{ externalContestSource.lastEventId | default('-') }}
+                </td>
+            </tr>
+            {% if sourceService.validContestSource and sourceService.apiVersion %}
+                <tr>
+                    <th>外部提供方信息</th>
+                    <td>
+                        版本：
+                        {% if sourceService.apiVersionUrl %}
+                            <a href="{{ sourceService.apiVersionUrl }}" target="_blank">
+                                {{ sourceService.apiVersion }}
+                            </a>
+                        {% else %}
+                            {{ sourceService.apiVersion }}
+                        {% endif %}
+                        <br/>
+                        {% if sourceService.apiProviderName %}
+                            提供方名称： {{ sourceService.apiProviderName }}<br/>
+                        {% endif %}
+                        {% if sourceService.apiProviderVersion %}
+                            提供方版本： {{ sourceService.apiProviderVersion }}<br/>
+                        {% endif %}
+                        {% if sourceService.apiProviderBuildDate %}
+                            提供方构建日期： {{ sourceService.apiProviderBuildDate }}<br/>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endif %}
+            <tr>
+                <th>外部比赛信息</th>
+                <td>
+                    有效： {{ sourceService.validContestSource | printYesNo }}<br/>
+                    {% if not sourceService.validContestSource %}
+                        错误：{{ sourceService.loadingError }}
+                    {% else %}
+                        ID：{{ sourceService.contestId }}<br/>
+                        名称： {{ sourceService.contestName }}<br/>
+                        开始时间： {{ sourceService.contestStartTime | printtime('Y-m-d H:i:s (T)') }}<br/>
+                        时长： {{ sourceService.contestDuration }}
+                    {% endif %}
+                </td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<style>
+    code[data-password], code[data-password-hidden] {
+        cursor: pointer;
+    }
+</style>
+
+<script>
+    $(function() {
+        var $password = $('code[data-password]');
+        var $passwordHidden = $('code[data-password-hidden]');
+        $password.on('click', function() {
+            $password.addClass('d-none');
+            $passwordHidden.removeClass('d-none');
+        });
+        $passwordHidden.on('click', function() {
+            $passwordHidden.addClass('d-none');
+            $password.removeClass('d-none');
+        });
+    });
+</script>

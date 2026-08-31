@@ -1,0 +1,51 @@
+{% extends "jury/base.html.twig" %}
+{% import "jury/jury_macros.twig" as macros %}
+
+{% block title %}题目 - {{ parent() }}{% endblock %}
+
+{% block extrahead %}
+    {{ parent() }}
+    {{ macros.table_extrahead() }}
+{% endblock %}
+
+{% block content %}
+
+    {% if current_contest %}
+        <h1>赛内题目 {{ current_contest.name }}</h1>
+        {% if problems_current is empty %}
+            <em>该比赛没有题目</em>
+        {% else %}
+            {{ macros.table(problems_current, table_fields) }}
+        {% endif %}
+    {% endif %}
+
+    {% if problems_other is not empty %}
+        <h1>其他赛内题目</h1>
+
+        {{ macros.table(problems_other, table_fields) }}
+    {% endif %}
+
+    {% if is_granted('ROLE_ADMIN') %}
+        <p class="mt-4">
+            {% include 'jury/partials/_delete_button.html.twig' with {'entities': problems_current} %}
+            {{ button(path('jury_problem_add'), '添加题目', 'primary', 'plus') }}
+            {{ button(path('jury_import_export', {'_fragment':'problemarchive'}), '导入题目', 'primary', 'upload') }}
+        </p>
+    {% endif %}
+
+
+{% endblock %}
+
+{% block extrafooter %}
+    {{ parent() }}
+    <script src="{{ asset('js/multi-delete.js') }}"></script>
+    <script>
+        $(function() {
+            initializeMultiDelete({
+                buttonSelector: '#delete-selected-button',
+                checkboxClass: 'problem-checkbox',
+                deleteUrl: '{{ path('jury_problem_delete_multiple') }}'
+            });
+        });
+    </script>
+{% endblock %}

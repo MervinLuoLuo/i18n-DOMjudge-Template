@@ -1,0 +1,75 @@
+{% set includeSubject = true %}
+{% if subject is defined and not subject %}
+    {% set includeSubject = false %}
+{% endif %}
+
+<div class="table-wrapper">
+    <table class="data-table table table-striped table-hover table-sm" style="width:100%;">
+        <thead class="thead-light">
+        <tr>
+            <th scope="col">时间</th>
+            <th scope="col">提问人</th>
+            <th scope="col">管理</th>
+            {% if includeSubject %}
+                <th scope="col">主题</th>
+            {% endif %}
+            <th scope="col">内容</th>
+        </tr>
+        </thead>
+        <tbody>
+        {%- for clarification in clarifications %}
+            {%- set link = path('team_clarification', {clarId: clarification.clarid}) %}
+
+            <tr class="{% if team.unreadClarifications.contains(clarification) %}unseen{% endif %}">
+                <td>
+                    <a data-ajax-modal data-ajax-modal-after="markSeen" href="{{ link }}">
+                        {{ clarification.submittime | printtime(null, clarification.contest) }}
+                    </a>
+                </td>
+                {%- if clarification.sender is null %}
+                    {%- set sender = '裁判' %}
+                    {%- if clarification.recipient is null %}
+                        {%- set recipient = '全部' %}
+                    {%- else %}
+                        {%- set recipient = clarification.recipient.effectiveName %}
+                    {%- endif %}
+                {%- else %}
+                    {%- set recipient = '裁判' %}
+                    {%- set sender = clarification.sender.effectiveName %}
+                {%- endif %}
+
+                <td>
+                    <a data-ajax-modal data-ajax-modal-after="markSeen" href="{{ link }}" title="{{ sender }}">
+                        {{ sender | u.truncate(teamname_max_length, '…') }}
+                    </a>
+                </td>
+                <td>
+                    <a data-ajax-modal data-ajax-modal-after="markSeen" href="{{ link }}" title="{{ recipient }}">
+                        {{ recipient | u.truncate(teamname_max_length, '…') }}
+                    </a>
+                </td>
+                {% if includeSubject %}
+                    <td>
+                        <a data-ajax-modal data-ajax-modal-after="markSeen" href="{{ link }}">
+                            {%- if clarification.problem -%}
+                                题目 {{ clarification.contestProblem | problemBadge -}}
+                            {%- elseif clarification.category -%}
+                                {{- categories[clarification.category]|default('通用') -}}
+                            {%- else -%}
+            通用
+                            {%- endif -%}
+                        </a>
+                    </td>
+                {% endif %}
+
+                <td>
+                    <a data-ajax-modal data-ajax-modal-after="markSeen" href="{{ link }}">
+                        {{ clarification.summary | markdown_to_html | sanitize_html('app.clarification_sanitizer') }}
+                    </a>
+                </td>
+            </tr>
+        {%- endfor %}
+
+        </tbody>
+    </table>
+</div>

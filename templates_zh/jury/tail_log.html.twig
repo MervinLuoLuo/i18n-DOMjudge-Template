@@ -1,0 +1,9 @@
+{% extends 'jury/base.html.twig' %}
+
+{% block title %}最后 200 行 {{ logFile }} - {{ parent() }}{% endblock %}
+
+{% block content %}
+    <h1>最后 200 行<kbd>{{ logFile }}</kbd></h1>
+    <pre class="output_text">{{ contents }}</pre>
+{% endblock %}
+

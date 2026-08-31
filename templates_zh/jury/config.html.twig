@@ -1,0 +1,453 @@
+{% extends "jury/base.html.twig" %}
+{% import "jury/jury_macros.twig" as macros %}
+
+{% block title %}系统设置 - {{ parent() }}{% endblock %}
+
+{% block extrahead %}
+    {{ parent() }}
+    {{ macros.toggle_extrahead() }}
+    {{ macros.select2_extrahead() }}
+    <style>
+        .btn.toggle-on {
+            right: initial;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    {% set config_category_map = {
+        'Scoring': '计分',
+        'Judging': '评测',
+        'Clarifications': '公告 / 质询',
+        'Display': '显示',
+        'Authentication': '认证',
+        'External systems': '外部系统'
+    } %}
+
+    {% set config_label_map = {
+        'verification_required': '是否需要人工验证评测结果',
+        'compile_penalty': '编译错误是否计入罚时',
+        'penalty_time': '每次错误提交罚时',
+        'results_prio': '结果优先级',
+        'results_remap': '结果重映射',
+        'score_in_seconds': '榜单按秒计分',
+        'memory_limit': '最大内存限制',
+        'output_limit': '最大输出限制',
+        'process_limit': '进程数限制',
+        'sourcesize_limit': '代码文件大小限制',
+        'sourcefiles_limit': '代码文件数量限制',
+        'script_timelimit': '编译 / 比较脚本时间限制',
+        'script_memory_limit': '编译 / 比较脚本内存限制',
+        'script_filesize_limit': '编译 / 比较脚本文件大小限制',
+        'timelimit_overshoot': '时间限制超时宽限',
+        'output_storage_limit': '输出存储限制',
+        'lazy_eval_results': '懒评测',
+        'judgehost_warning': '评测机警告时间',
+        'judgehost_critical': '评测机严重时间',
+        'diskspace_error': '磁盘空间错误阈值',
+        'default_compare': '默认比较脚本',
+        'default_run': '默认运行脚本',
+        'default_full_debug': '默认完整调试脚本',
+        'enable_parallel_judging': '并行评测',
+        'judgehost_activated_by_default': '默认激活评测机',
+        'clar_categories': '公告分类',
+        'clar_answers': '预制质询回复',
+        'clar_queues': '公告队列',
+        'clar_default_problem_queue': '题目公告默认队列',
+        'output_display_limit': '输出显示限制',
+        'show_pending': '显示待评测提交',
+        'show_flags': '显示国旗',
+        'show_affiliations': '显示所属机构',
+        'show_affiliation_logos': '显示机构 Logo',
+        'show_teams_submissions': '显示队伍提交信息列',
+        'show_compile': '显示编译器输出',
+        'show_sample_output': '显示样例输出差异',
+        'show_too_late_result': '显示超时提交结果',
+        'show_balloons_postfreeze': '封榜后发放气球',
+        'show_relative_time': '显示相对时间',
+        'time_format': '时间格式',
+        'thumbnail_size': '缩略图大小',
+        'show_limits_on_team_page': '队伍题目页显示限制',
+        'allow_team_submission_download': '允许队伍下载提交代码',
+        'team_column_width': '队伍列宽',
+        'show_public_stats': '显示公共统计',
+        'show_language_versions': '显示语言版本',
+        'show_teams_on_scoreboard': '榜单显示队伍',
+        'enable_ranking': '启用排名',
+        'auth_methods': '额外认证方式',
+        'ip_autologin': 'IP 自动登录',
+        'print_command': '打印命令',
+        'event_feed_format': '事件流格式',
+        'shadow_mode': '影子模式',
+        'external_contest_sources_allow_untrusted_certificates': '允许不受信任的 TLS 证书',
+        'external_judgement_types': '外部评测类型',
+        'external_ccs_submission_url': '外部 CCS 提交详情 URL',
+        'icat_url': 'iCAT URL',
+        'external_contest_source_critical': '外部比赛源严重时间',
+        'check_new_version': '检查新版本',
+        'adminer_enabled': '启用 Adminer 数据库编辑器'
+    } %}
+
+    {% set config_description_map = {
+        'verification_required': '评测结果在发布前是否需要 Jury 人工验证？',
+        'compile_penalty': '编译错误的提交是否应计入罚时（并显示在计分板上）？',
+        'penalty_time': '每次错误提交的罚时分钟数（如果最终通过）',
+        'results_prio': '用于在多测试点情况下确定最终结果的结果优先级。优先级较高的结果优先作为最终结果；优先级相同时，按下列顺序第一个错误结果作为最终结果。',
+        'results_remap': '重映射测试点结果，例如用于禁用某个特定结果类型，如 `no-output`。',
+        'score_in_seconds': '榜单罚时是否以秒而不是分钟计？',
+        'memory_limit': '提交允许使用的最大内存（kB）。包括启动已编译解决方案的 shell，以及 Java 虚拟机等解释器占用的约 300MB 内存，可以针对每个题目单独设置',
+        'output_limit': '提交可以产生的最大输出（kB）。超出部分会被截断，因此该值应大于最大测试数据输出。可以在每个题目上单独覆盖。',
+        'process_limit': '提交允许启动的最大进程数（包括 shell 和可能的解释器）。',
+        'sourcesize_limit': '提交的最大源代码大小（kB）。',
+        'sourcefiles_limit': '一次提交中允许的最大源文件数。设置为 `1` 可禁用多文件提交。',
+        'script_timelimit': '编译/比较脚本可用的最大秒数。这是针对恶意代码和有问题的脚本的防护措施，因此设置一个较大但合理的值即可。',
+        'script_memory_limit': '编译/比较脚本可用的最大内存（kB）。这是针对恶意代码和有问题的脚本的防护措施，因此设置一个较大但合理的值即可。',
+        'script_filesize_limit': '编译/比较脚本可写入的最大文件大小（kB）。超过该限制提交将因编译错误判错，因此该值应大于编译器写入的任何**中间或最终**结果。',
+        'timelimit_overshoot': '提交在超过时间限制后被终止前允许继续运行的时间。指定 `Xs` 表示 X 秒，`Y%` 表示百分比，或使用 `+|&` 分隔两者以表示两者之和、最大值或最小值。',
+        'output_storage_limit': '存储到数据库中的错误/系统输出最大大小（字节）；使用 `-1` 禁用任何限制。参见 `Display` / `output_display_limit` 控制*显示*的输出。',
+        'lazy_eval_results': '是否启用结果懒评测？启用后，一旦找到最高优先级结果即停止评测；否则始终评测所有测试点。设为`仅在请求时`不会自动开始评测。分析模式尝试只评测感兴趣的测试点。',
+        'judgehost_warning': '评测机最后签到后经过多少秒将其状态显示为 `warning`。',
+        'judgehost_critical': '评测机最后签到后经过多少秒将其状态显示为 `critical`。',
+        'diskspace_error': '评测机上的最低可用磁盘空间（kB），低于该值将发布内部错误。',
+        'default_compare': '未指定特殊比较脚本时用于比较输出的脚本。',
+        'default_run': '未指定特殊运行脚本时用于运行提交的脚本。',
+        'default_full_debug': '用于编译完整调试包的脚本。',
+        'enable_parallel_judging': '是否由多个评测机并行评测提交？',
+        'judgehost_activated_by_default': '评测机首次注册时是否自动激活。',
+        'clar_categories': '额外的澄清分类列表。',
+        'clar_answers': '预定义的澄清回复列表。',
+        'clar_queues': '澄清队列列表。',
+        'clar_default_problem_queue': '分配给题目澄清的队列。',
+        'output_display_limit': 'Jury 界面中显示的最大运行/差异/错误/系统输出大小（字节）；使用 `-1` 禁用任何限制。',
+        'show_pending': '是否在榜单上显示待评测提交？',
+        'show_flags': '是否在界面中显示国国旗？',
+        'show_affiliations': '是否在界面中显示所属机构名称？',
+        'show_affiliation_logos': '是否在榜单上显示机构 Logo？',
+        'show_teams_submissions': '是否在公共和队伍榜单上显示带提交信息的题目列？',
+        'show_compile': '是否在队伍 Web 界面中显示编译输出？',
+        'show_sample_output': '队伍是否可以在样例测试点上查看其输出与参考输出的差异？',
+        'show_too_late_result': '是否在队伍界面中显示 TOO-LATE 提交的结果？',
+        'show_balloons_postfreeze': '封榜后是否继续发放气球通知？',
+        'show_relative_time': '比赛事件时间是否以相对于比赛开始的时间展示（而不是绝对时间）？',
+        'time_format': '时间所用的格式。格式选项见 PHP `DateTime::format` 函数。',
+        'thumbnail_size': '上传的测试点图片缩略图的最大宽/高。',
+        'show_limits_on_team_page': '是否在队伍题目页面显示时间和内存限制。',
+        'allow_team_submission_download': '是否允许队伍下载自己的提交代码。注意：启用此选项意味着如果有人获得某队伍的账号，就可以下载该队伍所有提交的源代码。禁用时，获得队伍账号只能以该队伍身份提交，后续 Jury 可以轻易忽略。',
+        'team_column_width': '计分板上队伍列的最大宽度。设为 `0` 表示不限制。',
+        'show_public_stats': '是否在队伍和公共页面显示提交与题目统计信息。',
+        'show_language_versions': '是否在队伍页面显示标准编译器和运行器版本。',
+        'show_teams_on_scoreboard': '是否在榜单上显示队伍？',
+        'enable_ranking': '禁用后，不向参赛者显示排名信息。',
+        'auth_methods': '允许的额外认证方式列表。',
+        'ip_autologin': '启用后，使用 IP 认证时可跳过登录页面。',
+        'print_command': '如果设置，启用队伍和 Jury 将源代码发送到该命令。允许的参数见管理员手册。',
+        'event_feed_format': '使用的事件流格式。参见当前草案和可用版本。',
+        'shadow_mode': '该系统是否作为影子系统运行？',
+        'external_contest_sources_allow_untrusted_certificates': '从外部比赛源读取时是否允许不受信任的 TLS 证书。',
+        'external_judgement_types': '外部 CCS 报告的额外评测类型列表。默认全部视为罚时。',
+        'external_ccs_submission_url': '外部 CCS 上提交详情页的 URL。占位符 `[id]` 将替换为提交 ID，`[contest]` 替换为比赛 ID。留空则不显示指向外部 CCS 的链接。',
+        'icat_url': '可用的 ICPC iCAT 实例的 URL；将从提交验证框中链接过去。',
+        'external_contest_source_critical': '外部比赛源读取器最后签到后经过多少秒将其状态显示为 `critical`。',
+        'check_new_version': '是否自动检查并通知新的 DOMjudge 版本？',
+        'adminer_enabled': '是否启用 Adminer 数据库编辑器？'
+    } %}
+
+    {% set config_choice_map = {
+        'lazy_eval_results': {
+            '1': '懒完了',
+            '2': '完整评测',
+            '3': '仅在请求时',
+            '4': '分析模式'
+        },
+        'show_compile': {
+            '0': '从不',
+            '1': '仅在编译错误时',
+            '2': '始终'
+        },
+        'show_teams_on_scoreboard': {
+            '0': '始终',
+            '1': '登录后',
+            '2': '首次提交后'
+        },
+        'event_feed_format': {
+            '2020-03': '`2020-03` 版本之前使用的旧格式',
+            '2022-07': '`2022-07` 版本起使用的新格式'
+        },
+        'check_new_version': {
+            'none': '不报告任何新版本',
+            'incremental': '报告下一个补丁版本，偏向稳定性而非新功能',
+            'major': '报告最新的 Major/minor 版本，偏向维护者运行的版本'
+        },
+        'auth_methods': {
+            'ipaddress': 'IP 地址',
+            'xheaders': 'HTTP 头'
+        }
+    } %}
+
+    {% set config_placeholder_map = {
+        'external_judgement_types': {
+            'key': 'ID',
+            'value': '名称'
+        }
+    } %}
+
+    {% if diffs is not null %}
+        {% if diffs %}
+            <div class="alert alert-info" role="alert">已保存的更改：<ul>
+                    {% for key, change in diffs %}
+                        <li>
+                            <code>{{ key }}</code>:
+                            {{ change.before | json_encode }}
+                            ⟶
+                            {{ change.after | json_encode }}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% else %}
+            <div class="alert alert-warning" role="alert">
+                <p>暂无修改</p>
+            </div>
+        {% endif %}
+
+    {% endif %}
+    <h1>系统设置</h1>
+
+    <form method="post">
+        <ul class="nav nav-pills nav-fill" id="configtablist" role="tablist">
+            {% for category in options %}
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link {{ (category.name == activeCategory) ? 'active' : '' }}" id="{{ category.name | replace({' ': ''}) }}-tab" data-bs-toggle="tab" href="#{{ category.name | replace({' ': ''}) }}" role="tab">{{ config_category_map[category.name]|default(category.name) }}</a>
+                </li>
+            {% endfor %}
+        </ul>
+
+        <div class="tab-content mb-2" id="configtab">
+        {% for category in options %}
+            <div class="tab-pane fade {{ (category.name == activeCategory) ? 'show active' : '' }}" id="{{ category.name | replace({' ': ''}) }}" role="tabpanel" aria-labelledby="{{ category.name | replace({' ': ''}) }}-tab">
+                <div class="card">
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            {% for option in category.data %}
+                                <li class="list-group-item" style="padding:0;padding-top:10px;">
+                                    <div class="mb-3">
+                                        <label class="form-label"
+                                        {% if option.type in ['int','string','bool','enum'] or option.type == 'array_val' and option.options is not null %}
+                                            for="config_{{ option.name }}"
+                                            {% if option.type =='bool' %} onclick="$('#config_{{ option.name }}').bootstrapToggle('toggle')"{% endif %}
+                                        {% endif %}
+                                        >{{ config_label_map[option.name]|default(option.name | replace({'_': ' '}) | capitalize) }}:</label>
+                                        {% if option.type == 'bool' %}
+                                            <input type="checkbox" data-toggle="toggle" data-size="mini" data-on="Yes"
+                                                   data-off="No"
+                                                   name="config_{{ option.name }}" id="config_{{ option.name }}"
+                                                {% if option.value == 1 %} checked="checked"{% endif %}>
+                                            <br/>
+                                        {% elseif option.type == 'int' %}
+                                            {% if option.options is not null %}
+                                                <select class="form-control form-control-sm form-select form-select-sm {% if errors[option.name] is defined %}is-invalid{% endif %}"
+                                                       style="margin-left:5px;width:15em;text-align:right;display:inline-block;"
+                                                       name="config_{{ option.name }}" id="config_{{ option.name }}">
+                                                    {% for value, label in option.options %}
+                                                        <option {% if option.value == value %}selected{% endif %} value="{{ value }}">{{ config_choice_map[option.name] is defined ? config_choice_map[option.name][value]|default(label) : label }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            {% else %}
+                                                <input class="form-control form-control-sm {% if errors[option.name] is defined %}is-invalid{% endif %}"
+                                                       style="margin-left:5px;width:7em;text-align:right;display:inline-block;"
+                                                       type="number"
+                                                       name="config_{{ option.name }}" id="config_{{ option.name }}"
+                                                       value="{{ option.value }}">
+                                            {% endif %}
+                                            <br/>
+                                        {% elseif option.type == 'string' or option.type == 'enum' %}
+                                            {% if option.options is not null %}
+                                                <select class="form-control form-control-sm form-select form-select-sm {% if errors[option.name] is defined %}is-invalid{% endif %}"
+                                                        style="width:30em;display: block;"
+                                                        name="config_{{ option.name }}" id="config_{{ option.name }}">
+                                                    {% for value, label in option.options %}
+                                                        <option {% if option.value == value %}selected{% endif %} value="{{ value }}">{{ config_choice_map[option.name] is defined ? config_choice_map[option.name][value]|default(label) : label }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            {% else %}
+                                                <input class="form-control form-control-sm {% if errors[option.name] is defined %}is-invalid{% endif %}" style="width:30em;" type="text"
+                                                       name="config_{{ option.name }}" id="config_{{ option.name }}"
+                                                       value="{{ option.value }}">
+                                            {% endif %}
+                                        {% elseif option.type == 'array_keyval' %}
+                                            <br/>
+                                            <div data-collection>
+                                                {% set counter = 0 %}
+                                                {% for key,val in option.value %}
+                                                    <div data-collection-item class="mb-2">
+                                                        {% if option.key_options is not null %}
+                                                            <select class="form-control form-control-sm form-select form-select-sm {% if errors[option.name] is defined %}is-invalid{% endif %}"
+                                                                    style="width:10em;text-align:right;display:inline-block;"
+                                                                    name="config_{{ option.name }}[{{ counter }}][key]">
+                                                                {% for value, label in option.key_options %}
+                                                                    <option {% if key == value %}selected{% endif %} value="{{ value }}" label="{{ config_choice_map[option.name] is defined ? config_choice_map[option.name][value]|default(label | default('empty option')) : label | default('empty option') }}">{{ config_choice_map[option.name] is defined ? config_choice_map[option.name][value]|default(label) : label }}</option>
+                                                                {% endfor %}
+                                                            </select>
+                                                        {% else %}
+                                                            <input class="form-control form-control-sm {% if errors[option.name] is defined %}is-invalid{% endif %}"
+                                                                   style="width:10em;text-align:right;display:inline-block;" type="text"
+                                                                   value="{{ key }}"
+                                                                   placeholder="{{ config_placeholder_map[option.name] is defined ? config_placeholder_map[option.name]['key']|default(option.key_placeholder) : option.key_placeholder }}"
+                                                                   name="config_{{ option.name }}[{{ counter }}][key]"
+                                                                   id="config_{{ option.name }}_{{ counter }}__key_">
+                                                        {% endif %}
+                                                        {% if option.value_options is not null %}
+                                                            <select class="form-control form-control-sm form-select form-select-sm {% if errors[option.name] is defined %}is-invalid{% endif %}"
+                                                                    style="width:30em;display:inline-block;"
+                                                                    name="config_{{ option.name }}[{{ counter }}][val]">
+                                                                {% for value, label in option.value_options %}
+                                                                    <option {% if val == value %}selected{% endif %} value="{{ value }}">{{ config_choice_map[option.name] is defined ? config_choice_map[option.name][value]|default(label) : label }}</option>
+                                                                {% endfor %}
+                                                            </select>
+                                                        {% else %}
+                                                            <input class="form-control form-control-sm {% if errors[option.name] is defined %}is-invalid{% endif %}"
+                                                                   style="width:30em;display:inline-block;" type="text"
+                                                                   value="{{ val }}"
+                                                                   placeholder="{{ config_placeholder_map[option.name] is defined ? config_placeholder_map[option.name]['value']|default(option.value_placeholder) : option.value_placeholder }}"
+                                                                   name="config_{{ option.name }}[{{ counter }}][val]"
+                                                                   id="config_{{ option.name }}_{{ counter }}__val">
+                                                            {% endif %}
+                                                        {% set counter = counter + 1 %}
+                                                    </div>
+                                                {% endfor %}
+                                                <script type="text/template" data-index="{{ counter }}">
+                                                    <div data-collection-item class="mb-2">
+                                                        {% if option.key_options is not null %}
+                                                            <select class="form-control form-control-sm form-select form-select-sm {% if errors[option.name] is defined %}is-invalid{% endif %}"
+                                                                    style="width:10em;text-align:right;display:inline-block;"
+                                                                    name="config_{{ option.name }}[__idx__][key]">
+                                                                {% for value, label in option.key_options %}
+                                                                    <option value="{{ value }}">{{ config_choice_map[option.name] is defined ? config_choice_map[option.name][value]|default(label) : label }}</option>
+                                                                {% endfor %}
+                                                            </select>
+                                                        {% else %}
+                                                            <input class="form-control form-control-sm {% if errors[option.name] is defined %}is-invalid{% endif %}"
+                                                                   style="width:10em;text-align:right;display:inline-block;" type="text"
+                                                                   placeholder="{{ config_placeholder_map[option.name] is defined ? config_placeholder_map[option.name]['key']|default(option.key_placeholder) : option.key_placeholder }}"
+                                                                   name="config_{{ option.name }}[__idx__][key]"
+                                                                   id="config_{{ option.name }}___idx____key_">
+                                                        {% endif %}
+                                                        {% if option.value_options is not null %}
+                                                            <select class="form-control form-control-sm form-select form-select-sm {% if errors[option.name] is defined %}is-invalid{% endif %}"
+                                                                    style="width:30em;display:inline-block;"
+                                                                    name="config_{{ option.name }}[__idx__][val]">
+                                                                {% for value, label in option.value_options %}
+                                                                    <option value="{{ value }}">{{ config_choice_map[option.name] is defined ? config_choice_map[option.name][value]|default(label) : label }}</option>
+                                                                {% endfor %}
+                                                            </select>
+                                                        {% else %}
+                                                            <input class="form-control form-control-sm {% if errors[option.name] is defined %}is-invalid{% endif %}"
+                                                                   style="width:30em;display:inline-block;" type="text"
+                                                                   placeholder="{{ config_placeholder_map[option.name] is defined ? config_placeholder_map[option.name]['value']|default(option.value_placeholder) : option.value_placeholder }}"
+                                                                   name="config_{{ option.name }}[__idx__][val]"
+                                                                   id="config_{{ option.name }}___idx____val">
+                                                        {% endif %}
+                                                    </div>
+                                                </script>
+                                            </div>
+                                            <br/>
+                                        {% elseif option.type == 'array_val' %}
+                                            <br/>
+                                                {% if option.options is not null %}
+                                                    <select class="form-control form-control-sm form-select form-select-sm {% if errors[option.name] is defined %}is-invalid{% endif %}"
+                                                            style="width:30em;display:inline-block;"
+                                                            multiple
+                                                            name="config_{{ option.name }}[]"
+                                                            id="config_{{ option.name }}">
+                                                        {% for value in option.options %}
+                                                            <option {% if value in option.value %}selected{% endif %} value="{{ value }}">{{ config_choice_map[option.name] is defined ? config_choice_map[option.name][value]|default(value) : value }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                {% else %}
+                                                    <div data-collection>
+                                                        {% set counter = 0 %}
+                                                        {% for val in option.value %}
+                                                            <div data-collection-item class="mb-2">
+                                                                <input class="form-control form-control-sm {% if errors[option.name] is defined %}is-invalid{% endif %}"
+                                                                       style="width:30em;display:inline-block;" type="text"
+                                                                       value="{{ val }}"
+                                                                       name="config_{{ option.name }}[{{ counter }}]"
+                                                                       id="config_{{ option.name }}_{{ counter }}_">
+                                                            </div>
+                                                            {% set counter = counter + 1 %}
+                                                        {% endfor %}
+                                                        <script type="text/template" data-index="{{ counter }}">
+                                                            <div data-collection-item class="mb-2">
+                                                                <input class="form-control form-control-sm {% if errors[option.name] is defined %}is-invalid{% endif %}"
+                                                                       style="width:30em;display:inline-block;" type="text"
+                                                                       name="config_{{ option.name }}[__idx__]"
+                                                                       id="config_{{ option.name }}___idx___">
+                                                            </div>
+                                                        </script>
+                                                    </div>
+                                                {% endif %}
+                                        {% endif %}
+                                        {% if errors[option.name] is defined %}
+                                            <div class="invalid-feedback d-block">
+                                                {{ errors[option.name] }}
+                                            </div>
+                                        {% endif %}
+                                        <div class="small text-muted">{{ (config_description_map[option.name]|default(option.description)) | markdown_to_html }}</div>
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+        </div>
+        <input class="btn btn-primary" type="submit" value="Save all changes" id="save" name="save">
+    </form>
+{% endblock %}
+
+{% block extrafooter %}
+    <script>
+        $(function () {
+            function addDeleteLink($collectionItem) {
+                var $removeFormButton = $('<button type="button" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>');
+                $collectionItem.append($removeFormButton);
+
+                $removeFormButton.on('click', function(e) {
+                    $collectionItem.remove();
+                });
+            }
+
+            function addCollectionItem($collection, $addButton) {
+                var $template = $('script[type="text/template"]', $collection);
+                var template = $template.text();
+                var index = $template.data('index');
+                var newRow = template;
+                newRow = newRow.replace(/__idx__/g, index);
+                $template.data('index', index + 1);
+                var $newRow = $(newRow);
+                $addButton.before($newRow);
+                addDeleteLink($newRow);
+            }
+
+            function addAddLink($collection) {
+                var $addButton = $('<button type="button" class="btn btn-sm btn-secondary"><i class="fas fa-plus"></i></button>');
+                $collection.append($addButton);
+
+                $addButton.on('click', function (e) {
+                    addCollectionItem($collection, $addButton);
+                });
+            }
+
+            $('[data-collection]').each(function() {
+                var $collection = $(this);
+
+                addAddLink($collection);
+
+                $('[data-collection-item]', $collection).each(function() {
+                    addDeleteLink($(this));
+                })
+            })
+        });
+    </script>
+{% endblock %}

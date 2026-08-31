@@ -1,0 +1,17 @@
+{% extends "jury/base.html.twig" %}
+{% import "jury/jury_macros.twig" as macros %}
+
+{% block title %}编辑队伍类别 {{ teamCategory.categoryid }} - {{ parent() }}{% endblock %}
+
+{% block extrahead %}
+    {{ parent() }}
+    {{ macros.coloris_extrahead() }}
+{% endblock %}
+
+{% block content %}
+
+    <h1>编辑队伍类别 {{ teamCategory.categoryid }}</h1>
+
+    {% include 'jury/partials/team_category_form.html.twig' %}
+
+{% endblock %}

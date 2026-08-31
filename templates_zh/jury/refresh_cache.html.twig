@@ -1,0 +1,52 @@
+{% extends "jury/base.html.twig" %}
+{% import "jury/jury_macros.twig" as macros %}
+
+{% block title %}刷新榜单缓存 - {{ parent() }}{% endblock %}
+
+{% block extrahead %}
+    {{ parent() }}
+    {{ macros.table_extrahead() }}
+{% endblock %}
+
+{% block content %}
+
+    <h1>刷新榜单缓存</h1>
+
+    {% if doRefresh %}
+        {{ macros.progress_bar() }}
+    {% else %}
+        <div class="alert alert-warning">
+            <h5 class="alert-heading">数据库影响</h5>
+            <hr>
+            <p>
+                刷新排行榜缓存可能对数据库负载产生显著影响，
+                在正常操作情况下不需要进行刷新
+                <br/><br/>
+                确定现在刷新
+                {% if current_contest is not empty %}
+                    {{ current_contest.name }}
+                {% else %}
+                    所有活动状态比赛
+                {% endif %}
+                排行榜缓存吗? ?
+            </p>
+            <form action="{{ path('jury_refresh_cache') }}" method="post">
+                {% if current_contest is not empty %}
+                    <input type="hidden" name="cid" value="{{ current_contest.cid }}"/>
+                {% endif %}
+                <button type="submit" class="btn btn-danger" name="refresh">
+                    <i class="fas fa-sync-alt"></i> 立即刷新！</button>
+            </form>
+        </div>
+    {% endif %}
+{% endblock %}
+
+{% block extrafooter %}
+    {% if doRefresh %}
+        {% set progressUrl = path('jury_refresh_cache') %}
+        {% if current_contest is not empty %}
+            {% set progressUrl = progressUrl ~ '?cid=' ~ current_contest.cid %}
+        {% endif %}
+        {{ macros.progress_loader(progressUrl) }}
+    {% endif %}
+{% endblock %}

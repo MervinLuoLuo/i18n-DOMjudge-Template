@@ -1,0 +1,26 @@
+{% extends "jury/base.html.twig" %}
+
+{% block title %}{{ parent() }} - 打印{% endblock %}
+
+{% block extrahead %}
+{{ parent() }}
+{% endblock %}
+
+{% block content %}
+
+<div class="container">
+<h1 class="text-center">打印文件</h1>
+
+<pre class="output_text m-3">
+{{ output }}
+</pre>
+
+{% if success %}
+<div class="alert alert-success">文件已打印</div>
+{% else %}
+<div class="alert alert-danger">打印出错，请联系工作人员</div>
+{% endif %}
+
+</div>
+
+{% endblock %}

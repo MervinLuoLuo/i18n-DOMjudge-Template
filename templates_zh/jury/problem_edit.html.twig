@@ -1,0 +1,44 @@
+{% extends "jury/base.html.twig" %}
+{% import "jury/jury_macros.twig" as macros %}
+
+{% block title %}编辑题目 {{ problem.probid }} - {{ parent() }}{% endblock %}
+
+{% block content %}
+
+    <h1>编辑题目 {{ problem.probid }}</h1>
+
+    <div class="row">
+        <div class="col-lg-4">
+            <table class="table table-sm table-striped">
+                <tr>
+                    <th>题目 ID</th>
+                    <td>{{ problem.probid }}</td>
+                </tr>
+                <tr>
+                    <th>测试用例</th>
+                    <td>
+                        {% if problem.testcases is empty %}
+                            <em>无测试用例</em>
+                        {% else %}
+                            <a href="{{ path('jury_problem_testcases', {'probId': problem.probid}) }}">详情 / 编辑</a>
+                        {% endif %}
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    {% include 'jury/partials/problem_form.html.twig' %}
+
+    {% if is_granted('ROLE_ADMIN') %}
+        <hr>
+        <i>或</i>
+
+        <div class="row">
+            <div class="col-lg-4">
+                {{ form(uploadForm) }}
+            </div>
+        </div>
+    {% endif %}
+
+{% endblock %}

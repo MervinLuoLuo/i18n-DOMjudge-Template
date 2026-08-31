@@ -1,0 +1,19 @@
+{% extends "jury/base.html.twig" %}
+{% import "jury/jury_macros.twig" as macros %}
+
+{% block title %}添加执行脚本 - {{ parent() }}{% endblock %}
+
+{% block extrahead %}
+    {{ parent() }}
+    {{ macros.select2_extrahead() }}
+{% endblock %}
+
+{% block content %}
+
+    <h1>添加执行脚本</h1>
+
+    {% include 'jury/partials/executable_form.html.twig' %}
+
+    {{ macros.collection_scripts() }}
+
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "jury/base.html.twig" %}
+{% import "jury/jury_macros.twig" as macros %}
+
+{% block title %}可使用语言 - {{ parent() }}{% endblock %}
+
+{% block extrahead %}
+    {{ parent() }}
+    {{ macros.table_extrahead() }}
+    {{ macros.toggle_extrahead() }}
+{% endblock %}
+
+{% block content %}
+
+    <h1>已启用的语言</h1>
+
+    {{ macros.table(enabled_languages, table_fields) }}
+
+    <br/>
+    <br/>
+
+    <h1>已禁用的语言</h1>
+
+    {{ macros.table(disabled_languages, table_fields) }}
+
+    {% if is_granted('ROLE_ADMIN') %}
+        <p>
+            {{ button(path('jury_language_add'), 'Add new language', 'primary', 'plus') }}
+        </p>
+    {% endif %}
+
+{% endblock %}
+
+{% block extrafooter %}
+    {{ macros.toggle_autosubmit_extrafooter() }}
+{% endblock %}

@@ -1,0 +1,132 @@
+{% extends 'jury/export/layout.html.twig' %}
+
+{% block body %}
+    <h2>奖项</h2>
+    <table class="table">
+        <thead>
+        <tr>
+            <th scope="col">排名</th>
+            <th scope="col">队伍</th>
+            <th scope="col">奖项</th>
+            <th scope="col">AC 数</th>
+            <th scope="col">总罚时</th>
+            <th scope="col">最后 AC 的时间</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in awarded %}
+            <tr>
+                <th scope="row">{{ row.rank }}</th>
+                <th scope="row">{{ row.team }}</th>
+                <td>{{ row.award }}</td>
+                <td>{{ row.solved }}</td>
+                <td>{{ row.total_time }}</td>
+                <td>{{ row.max_time }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    {% for award in ['Ranked', 'Highest Honors', 'High Honors', 'Honors'] %}
+        {% if ranked[award] is defined %}
+            <h2>
+                {% if award == 'Ranked' %}
+                    其他排名队伍
+                {% else %}
+                    {{ award }}
+                {% endif %}
+            </h2>
+            <table class="table">
+                <thead>
+                <tr>
+                    <th scope="col">排名</th>
+                    <th scope="col">队伍</th>
+                    <th scope="col">已解决题目</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for row in ranked[award] %}
+                    <tr>
+                        <th scope="row">{{ row.rank }}</th>
+                        <th scope="row">{{ row.team }}</th>
+                        <td>{{ row.solved }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    {% endfor %}
+
+    <h2>荣誉奖</h2>
+    <table class="table">
+        <tbody>
+        {% for row in honorable|batch(2) %}
+            <tr>
+                {% for team in row %}
+                    <td>{{ team }}</td>
+                {% endfor %}
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>地区冠军</h2>
+    <table class="table">
+        <thead>
+        <tr>
+            <th scope="col">地区</th>
+            <th scope="col">队伍</th>
+            <th scope="col">排名</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in regionWinners %}
+            <tr>
+                <th scope="row">{{ row.group }}</th>
+                <td>{{ row.team }}</td>
+                <td>{{ row.rank }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>首杀</h2>
+    <table class="table">
+        <thead>
+        <tr>
+            <th scope="col">题目</th>
+            <th scope="col">队伍</th>
+            <th scope="col">排名</th>
+            <th scope="col">时间</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in firstToSolve %}
+            <tr>
+                <th scope="row">{{ row.problem }}: {{ row.problem_name }}</th>
+                <td>
+                    {% if row.team is not null %}
+                        {{ row.team }}
+                    {% else %}
+                        <i>未解决</i>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if row.rank is not null %}
+                        {{ row.rank }}
+                    {% else %}
+                        <i>-</i>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if row.time is not null %}
+                        {{ row.time }}
+                    {% else %}
+                        <i>-</i>
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

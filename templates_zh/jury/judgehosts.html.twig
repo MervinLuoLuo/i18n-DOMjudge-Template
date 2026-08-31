@@ -1,0 +1,44 @@
+{% extends "jury/base.html.twig" %}
+{% import "jury/jury_macros.twig" as macros %}
+
+{% block title %}评测机 - {{ parent() }}{% endblock %}
+
+{% block extrahead %}
+    {{ parent() }}
+    {{ macros.table_extrahead() }}
+{% endblock %}
+
+{% block content %}
+
+    <h1>评测机</h1>
+
+    <div data-ajax-refresh-target>
+        {% include 'jury/partials/judgehost_list.html.twig' %}
+    </div>
+
+    {%- if is_granted('ROLE_ADMIN') %}
+
+        <div class="mb-4">
+            <form action="{{ path('jury_judgehost_enable_all') }}" method="post" class="d-inline">
+                <button type="submit" name="cmd-enable" class="btn btn-success">
+                    <i class="fas fa-play"></i>启动所有评测机</button>
+            </form>
+            <form action="{{ path('jury_judgehost_disable_all') }}" method="post" class="d-inline">
+                <button type="submit" name="cmd-disable" class="btn btn-warning">
+                    <i class="fas fa-pause"></i>暂停所有评测机</button>
+            </form>
+            {% if not all_checked_in_recently %}
+                <form action="{{ path('jury_judgehost_autohide') }}" method="post" class="d-inline">
+                    <button type="submit" name="cmd-autohide" class="btn btn-warning">
+                        <i class="fas fa-trash"></i>自动隐藏评测机</button>
+                </form>
+            {% endif %}
+            <div class="d-inline">
+                {{ button(path('jury_judgehost_edit', {'include_hidden': false}), '编辑可看到的评测机', 'secondary', 'edit') }}
+                {{ button(path('jury_judgehost_edit'), '编辑所有评测机', 'secondary', 'edit') }}
+            </div>
+        </div>
+
+    {%- endif %}
+
+{% endblock %}

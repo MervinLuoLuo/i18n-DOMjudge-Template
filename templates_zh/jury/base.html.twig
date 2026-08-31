@@ -1,0 +1,95 @@
+{% extends "base.html.twig" %}
+
+{% block title %}{{ title | default('DOMjudge') }}{% endblock %}
+
+{% block messages %}
+    {{ parent() }}
+
+    {% if app.session.flashBag.has('scoreboard_refresh') %}
+        {% for message in app.session.flashBag.get('scoreboard_refresh') %}
+            {% include 'jury/refresh_scoreboard.html.twig' %}
+        {% endfor %}
+    {% endif %}
+{% endblock %}
+
+{% block extrahead %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('style_jury.css') }}">
+{% endblock %}
+
+{% block menu %}
+    {% include 'jury/menu.html.twig' %}
+{% endblock %}
+{% block footer %}
+    <script src="{{ asset('js/monaco/vs/loader.js') }}"></script>
+    <script>
+        {# A bit ugly to do the replace, but Symfony adds a version to any asset URLs so remove it again #}
+        require.config({ paths: { vs: '{{ asset('js/monaco/vs') }}'.replace(/\?.*/, '') } });
+        window.editorThemeFolder = '{{ asset('js/monaco/themes') }}'.replace(/\?.*/, '');
+    </script>
+    <script>
+        $(function () {
+            /* Show the notification options if the browser supports it */
+            if ('Notification' in window) {
+                $('#notify_disable').click(disableNotifications);
+                $('#notify_enable').click(enableNotifications);
+                if (getCookie('domjudge_notify') != 1) {
+                    $('#notify_enable').removeClass('d-none');
+                } else {
+                    $('#notify_disable').removeClass('d-none');
+                }
+            }
+
+            $('#keys_disable').click(disableKeys);
+            $('#keys_enable').click(enableKeys);
+            var keysCookie = getCookie('domjudge_keys');
+            if (keysCookie != 1 && keysCookie != "") {
+                $('#keys_enable').removeClass('d-none');
+            } else {
+                $('#keys_disable').removeClass('d-none');
+            }
+
+            updateMenuAlerts();
+            setInterval(updateMenuAlerts, 20000);
+
+            $('[data-bs-toggle="tooltip"]').tooltip();
+
+            applyEditorTheme();
+        });
+
+        initializeKeyboardShortcuts();
+    </script>
+
+    <div class="container d-none" id="keyhelp">
+        <h1>键盘快捷键</h1>
+
+        <code>?</code> 显示此帮助， <code>退出</code>退出<br/>
+        <br/>
+
+        <code>j</code>前往下一项，例如下一条提交<br/>
+        <code>k</code>前往上一项，例如上一条提交<br/>
+        <br/>
+
+        <code>s</code> <code>↵</code>打开提交列表<br/>
+        <code>s</code> <code>[0-9]+</code> <code>↵</code>打开指定提交，例如<code>s42↵</code>前往提交 42<br/>
+        <br/>
+
+        <code>t</code> <code>↵</code>打开队伍列表<br/>
+        <code>t</code> <code>[0-9]+</code> <code>↵</code>打开指定队伍<br/>
+        <br/>
+
+        <code>p</code> <code>↵</code>打开题目列表<br/>
+        <code>p</code> <code>[0-9]+</code> <code>↵</code>打开指定题目<br/>
+        <br/>
+
+        <code>c</code> <code>↵</code>打开澄清列表<br/>
+        <code>c</code> <code>[0-9]+</code> <code>↵</code>打开指定澄清<br/>
+        <br/>
+
+        <code>Shift + j</code> <code>[0-9]+</code> <code>↵</code>打开指定评测<br/>
+        <br/>
+
+        <code>Shift + s</code>打开排行榜<br/>
+        <br/>
+    </div>
+{% endblock %}

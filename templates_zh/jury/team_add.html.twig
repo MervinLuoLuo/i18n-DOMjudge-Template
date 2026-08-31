@@ -1,0 +1,17 @@
+{% extends "jury/base.html.twig" %}
+{% import "jury/jury_macros.twig" as macros %}
+
+{% block title %}添加队伍 - {{ parent() }}{% endblock %}
+
+{% block extrahead %}
+    {{ parent() }}
+    {{ macros.select2_extrahead() }}
+{% endblock %}
+
+{% block content %}
+
+    <h1>添加队伍</h1>
+
+    {% include 'jury/partials/team_form.html.twig' %}
+
+{% endblock %}

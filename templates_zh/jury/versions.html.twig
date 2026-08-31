@@ -1,0 +1,96 @@
+{% extends "jury/base.html.twig" %}
+{% import "jury/jury_macros.twig" as macros %}
+
+{% block title %}编译器和运行器版本概览{% endblock %}
+
+{% block extrahead %}
+    {{ parent() }}
+    {{ macros.table_extrahead() }}
+{% endblock %}
+
+{% block content %}
+    <h1>编译器和运行器版本概览</h1>
+
+    {% for lang in data %}
+        <div class="card mb-3">
+            <div class="card-header">语言<code>{{ lang.language.langid }}</code>
+                {% if is_granted('ROLE_ADMIN') %}
+                <span style="float: right">
+                    {{ button(path('jury_language_edit', {'langId': lang.language.langid}), 'Edit version command(s)', 'primary btn-sm', 'edit') }}
+                </span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <div class="card-title">
+                    <div class="row">
+                        <div class="col-sm">
+                            <h6>编译器版本</h6>
+                            {% if lang.compiler_outputs | length > 1 %}
+                                <div class="alert alert-danger" role="alert">版本不匹配。</div>
+                            {% endif %}
+                            {% for key, output in lang.compiler_outputs %}
+                                <div class="card">
+                                    <div class="card-header">
+                                        {% if key == lang.canonical_compiler_key %}
+                                            <span class="badge text-bg-success">标准版本</span>
+                                        {% else %}
+                                            <span class="badge text-bg-danger">非标准版本</span>
+                                            {{ button(path('jury_compiler_promote', {'versionId': output.versionid}), 'Mark as canonical', 'primary btn-sm', 'bookmark') }}
+                                        {% endif %}
+                                    </div>
+                                    <ul class="list-group list-group-flush">
+                                        <li class="list-group-item">
+                                            <pre class="output_text" style="background-color: rgba(0,121,54,.1);">$ {{ output.command }}</pre>
+                                            <pre class="output_text">{{ output.version }}</pre>
+                                        </li>
+                                        <li class="list-group-item">首次报告者<ul>
+                                                {% for host in output.hostdata %}
+                                                    <li>
+                                                        {{ host.hostname | printHost }}: {{ host.last_changed | printHumanTimeDiff }}
+                                                    </li>
+                                                {% endfor %}
+                                            </ul>
+                                        </li>
+                                    </ul>
+                                </div>
+                            {% endfor %}
+                            {% if lang.runner_outputs | length > 0 %}
+                                <br/>
+                                <h6>运行器版本</h6>
+                                {% if lang.runner_outputs | length > 1 %}
+                                    <div class="alert alert-danger" role="alert">版本不匹配。</div>
+                                {% endif %}
+                                {% for key, output in lang.runner_outputs %}
+                                    <div class="card">
+                                        <div class="card-header">
+                                            {% if key == lang.canonical_runner_key %}
+                                                <span class="badge text-bg-success">标准版本</span>
+                                            {% else %}
+                                                <span class="badge text-bg-danger">非标准版本</span>
+                                                {{ button(path('jury_runner_promote', {'versionId': output.versionid}), 'Mark as canonical', 'primary btn-sm', 'bookmark') }}
+                                            {% endif %}
+                                        </div>
+                                        <ul class="list-group list-group-flush">
+                                            <li class="list-group-item">
+                                                <pre class="output_text" style="background-color: rgba(0,121,54,.1);">$ {{ output.command }}</pre>
+                                                <pre class="output_text">{{ output.version }}</pre>
+                                            </li>
+                                            <li class="list-group-item">首次报告者<ul>
+                                                    {% for host in output.hostdata %}
+                                                        <li>
+                                                            {{ host.hostname | printHost }}: {{ host.last_changed | printHumanTimeDiff }}
+                                                        </li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+{% endblock %}

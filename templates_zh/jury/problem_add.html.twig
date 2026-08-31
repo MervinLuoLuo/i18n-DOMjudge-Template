@@ -1,0 +1,12 @@
+{% extends "jury/base.html.twig" %}
+{% import "jury/jury_macros.twig" as macros %}
+
+{% block title %}添加题目 - {{ parent() }}{% endblock %}
+
+{% block content %}
+
+    <h1>添加题目</h1>
+
+    {% include 'jury/partials/problem_form.html.twig' %}
+
+{% endblock %}

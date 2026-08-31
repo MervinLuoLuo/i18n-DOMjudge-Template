@@ -1,0 +1,27 @@
+{% extends "team/base.html.twig" %}
+
+{% block title %}{{ parent() }} - 打印{% endblock %}
+
+{% block extrahead %}
+    {{ parent() }}
+{% endblock %}
+
+{% block content %}
+
+    <div class="container pt-5">
+        <h1 class="text-center">打印文档</h1>
+
+        <pre class="output_text m-3">
+{{ output }}
+</pre>
+
+        {% if success %}
+            <div class="alert alert-success">文档已打印</div>
+        {% else %}
+            <div class="alert alert-danger">打印出错，请联系志愿者</div>
+        {% endif %}
+
+        <a href="./" class="btn btn-secondary mt-3"> 关闭</a>
+    </div>
+
+{% endblock %}

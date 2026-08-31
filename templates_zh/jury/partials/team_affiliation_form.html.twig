@@ -1,0 +1,12 @@
+<div class="row col-lg-4">
+    {{ form_start(form) }}
+    {{ form_row(form.externalid,{'label': '外部 ID','help': '留空则自动生成'}) }}
+    {{ form_row(form.icpcid,{'help': '(可选)队伍在 ICPC CMS 中的 ID'})}}
+    {{ form_row(form.shortname,{'label': '简称'})  }}
+    {{ form_row(form.name,{'label': '名称'})  }}
+    {{ form_row(form.country,{'label': '国家'})  }}
+    {{ form_row(form.internalcomments,{'label': '内部描述(仅管理员可查看)'}) }}
+    {{form_end(form)}}
+</div>
+
+{% include 'jury/partials/country_select.html.twig' with {field: '#team_affiliation_country'} %}

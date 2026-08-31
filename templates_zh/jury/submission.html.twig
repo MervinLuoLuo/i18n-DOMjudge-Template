@@ -1,0 +1,827 @@
+{# @var \App\Entity\ExternalJudgement externalJudgement #}
+{% extends "jury/base.html.twig" %}
+
+{% block title %}提交任务 s{{ submission.submitid }} - {{ parent() }}{% endblock %}
+
+{% block extrahead %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('css/nv.d3.min.css') }}">
+    <script src="{{ asset('js/d3.min.js') }}"></script>
+    <script src="{{ asset('js/nv.d3.min.js') }}"></script>
+    <script src="{{ asset('js/FileSaver.min.js') }}"></script>
+    <style>
+        .judging-table td a, .judging-table td a:hover {
+            display: block;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .judging-table tr.disabled td a {
+            color: silver
+        }
+
+        .image_thumb {
+            max-width: {{ thumbnailSize }}px;
+            max-height: {{ thumbnailSize }}px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+
+    {% if submission.externalJudgements.empty %}
+        {% set externalJudgement = null %}
+    {% else %}
+        {% set externalJudgement = submission.externalJudgements.first %}
+    {% endif %}
+
+    {% if claimWarning %}
+        <div class="alert alert-warning">
+            {{ claimWarning }}
+        </div>
+    {% endif %}
+
+    {% if requestedOutputCount %}
+        <div class="alert alert-warning">
+            正在等待获取并上传 {{ requestedOutputCount }} 个队伍输出（或完整调试包）。
+        </div>
+    {% endif %}
+
+    {% if selectedJudging is not null and selectedJudging.result is not empty and submission.expectedResults %}
+        {% if selectedJudging.result|upper not in submission.expectedResults %}
+            <div class="alert alert-danger">
+                实际结果 {{ selectedJudging.result | printValidJuryResult }} 与预期结果不匹配：
+                {% for expectedResult in submission.expectedResults %}
+                    {{ expectedResult | printValidJuryResult }}
+                    {% if not loop.last %}或{% endif %}
+                {% endfor %}.
+            </div>
+        {% elseif submission.expectedResults|length > 1 %}
+            <div class="alert alert-warning">
+                实际结果 {{ selectedJudging.result | printValidJuryResult }} 匹配多个预期结果之一：
+                {% for expectedResult in submission.expectedResults %}
+                    {{ expectedResult | printValidJuryResult }}
+                    {% if not loop.last %}或{% endif %}
+                {% endfor %}.
+            </div>
+        {% else %}
+            <div class="alert alert-success">
+                实际结果匹配预期结果（{{ selectedJudging.result | printValidJuryResult }}）。
+            </div>
+        {% endif %}
+    {% endif %}
+
+    {% if version_warnings is not null and version_warnings is not empty %}
+        {% for type, versions in version_warnings %}
+            <div class="alert alert-warning">
+                <p>
+                    本次评测未对所有测试用例使用相同 {{ type}} 版本。
+                    这可能导致不正常结果。使用的版本：
+                </p>
+                <p>
+                    {% for version in versions %}
+                            <pre class="output_text">{{ version }}</pre>
+                            {% if not loop.last %}<hr />{% endif %}
+                    {% endfor %}
+                </p>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="card">
+        <div class="card-header">
+            <h1 style="display: inline;">
+                提交任务 s{{ submission.submitid }}
+                {% if submission.originalSubmission %}
+                    {% set origSubmissionUrl = path('jury_submission', {submitId: submission.originalSubmission.submitid}) %}
+                    （重新提交 <a href="{{ origSubmissionUrl }}">s{{ submission.originalSubmission.submitid }}</a>)
+                {% endif %}
+                {% if submission.resubmissions is not empty %}
+                    （重新提交为
+                    {%- for resubmission in submission.resubmissions -%}
+                        {% set resubmissionUrl = path('jury_submission', {submitId: resubmission.submitid}) %}
+                        <a href="{{ resubmissionUrl }}">s{{ resubmission.submitid }}</a>
+                        {%- if not loop.last -%},{%- endif -%}
+                    {%- endfor -%}
+                    )
+                {% endif %}
+                {% if not submission.valid %}
+                    （已忽略）
+                {% endif %}
+            </h1>
+            {% if not submission.importError %}
+                <div style="float: right;">
+                    {% if is_granted('ROLE_ADMIN') %}
+                        {% if submission.valid %}
+                            {% set action = 'ignore' %}
+                        {% else %}
+                            {% set action = 'unignore' %}
+                        {% endif %}
+                        <form action="{{ path('jury_submission_update_status', {'submitId': submission.submitid}) }}" method="post"
+                              style="display: inline; ">
+                            <input type="hidden" name="valid" value="{% if submission.valid %}0{% else %}1{% endif %}"/>
+                            <input type="submit" class="btn btn-outline-secondary btn-sm"
+                                   value="{{ action | upper }} this submission"
+                                   onclick="return confirm('Really {{ action }} submission s{{ submission.submitid }}?');"/>
+                        </form>
+                    {% endif %}
+
+                    {% include 'jury/partials/rejudge_form.html.twig' with {table: 'submission', id: submission.submitid} %}
+                </div>
+            {% endif %}
+
+            {# Condensed submission info on a single line with icons #}
+            <div class="submission-summary mb-2">
+                <span>
+                    <i class="fas fa-users" title="Team:"></i>
+                    <a href="{{ path('jury_team', {teamId: submission.team.teamid, cid: submission.contest.cid}) }}">
+                        {{ submission.team.effectiveName }} {{ submission.team | entityIdBadge('t') }}
+                    </a>
+                </span>
+
+                {% if submission.user %}
+                    <span>
+                        <i class="fas fa-user" title="User:"></i>
+                        <a href="{{ path('jury_user', {userId: submission.user.userid, cid: submission.contest.cid}) }}">
+                            {{ submission.user.username }} {{ submission.user | entityIdBadge('u') }}
+                        </a>
+                    </span>
+                {% endif %}
+
+                {% if current_contest.cid != submission.contest.cid %}
+                    <span>
+                        <i class="fas fa-trophy" title="Contest:"></i>
+                        <a href="{{ path('jury_contest', {'contestId': submission.contest.cid}) }}">
+                            {{ submission.contest.shortname }}
+                            {{ submission.contest | entityIdBadge('c') }}
+                        </a>
+                    </span>
+                {% endif %}
+
+                <span>
+                    <i class="fas fa-book-open" title="Problem:"></i>
+                    <a href="{{ path('jury_problem', {'probId': submission.problem.probid}) }}">
+                        {% if submission.contestProblem %}
+                            {{ submission.contestProblem | problemBadge }} {{ submission.problem.name }}
+                        {% else %}
+                            {{ submission.problem.name }}
+                        {% endif %}
+                        {{ submission.problem | entityIdBadge('p') }}
+                    </a>
+                </span>
+
+                <span>
+                    <i class="fas fa-comments" title="Language:"></i>
+                    <a href="{{ path('jury_language', {'langId': submission.language.langid}) }}">
+                        {{ submission.language.name }}
+                        {{ submission.language | entityIdBadge }}
+                    </a>
+                </span>
+
+                <span>
+                    <i class="fas fa-clock" title="Submittime:"></i>
+                    <span title="{{ submission.submittime | printtime('Y-m-d H:i:s (T)') }}">
+                        {{ submission.submittime | printtime(null, submission.contest) }}
+                    </span>
+                </span>
+
+                <span>
+                    <i class="fas fa-stopwatch" title="Allowed runtime:"></i>
+                    {{ submission.problem.timelimit * submission.language.timeFactor }}s
+                </span>
+
+                <span>
+                    <i class="fas fa-code" title="Source code:"></i>
+                    <a href="{{ path('jury_submission_source', {submission: submission.submitid}) }}">
+                        查看 {{ submission.files | printFiles }}
+                    </a>
+                </span>
+
+                {% if shadowMode() and submission.externalid %}
+                    {% if external_ccs_submission_url is empty %}
+                        外部 ID：{{- submission.externalid -}}
+                    {% else %}
+                        {% set externalSubmissionUrl = submission | externalCcsUrl %}
+                        {% if externalSubmissionUrl is not empty %}
+                            <span>
+                                <i class="fas fa-link" title="External link:"></i>
+                                <a href="{{ externalSubmissionUrl }}" target="_blank">在外部 CCS 中查看</a>
+                                （ID：{{- submission.externalid -}}）
+                            </span>
+                        {% endif %}
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <br />
+
+    {% if not submission.valid %}
+        <div class="alert alert-danger">该提交不参与排行榜计算。</div>
+    {% endif %}
+
+    {% if submission.importError %}
+        <div class="alert alert-danger">
+            <div>该提交无法导入 DOMjudge，因此只显示外部数据。</div>
+            <div>导入时错误为：<code>{{ submission.importError }}</code></div>
+        </div>
+    {% endif %}
+
+    {% if not submission.contestProblem %}
+        <div class="alert alert-danger">该提交对应的题目已不属于该提交所属的比赛。</div>
+    {% endif %}
+
+    {% if externalJudgement is not null and externalJudgement.result is not empty and (
+        (selectedJudging is not null and selectedJudging.result is not empty and externalJudgement.result != selectedJudging.result)
+        or submission.importError) %}
+        <div class="alert alert-danger">
+            <strong>结果不同！</strong>
+            <hr>
+            <p>
+                该提交被判为
+                {% if external_ccs_submission_url is empty %}
+                    {{ externalJudgement.result | printValidJuryResult }} 由外部 CCS
+                {% else %}
+                    <a href="{{ submission | externalCcsUrl }}" target="_blank">
+                        {{ externalJudgement.result | printValidJuryResult }} 由外部 CCS
+                    </a>
+                {% endif -%}
+                ，但作为
+                {% if submission.importError %}
+                    {{ 'import-error' | printValidJuryResult }}
+                {% else %}
+                    {{ selectedJudging.result | printValidJuryResult }}
+                {% endif %}
+                由 DOMjudge 完成。
+            </p>
+
+            {% include 'jury/partials/verify_form.html.twig' with {
+                label: 'Shadow difference verified',
+                judging: externalJudgement,
+                form_action: path('jury_shadow_difference_verify', {extjudgementid: externalJudgement.extjudgementid}),
+                show_form: true,
+                show_icat: false} %}
+        </div>
+    {% endif %}
+
+    {% if not sameTestcaseHashes and selectedJudging is not null and selectedJudging.result is not empty %}
+        <div class="alert alert-danger">本次评测后题目测试用例已变更，建议对整个题目进行重判。</div>
+    {% endif %}
+
+    {% if judgings | length > 1 or (judgings | length == 1 and selectedJudging is null) %}
+        <h2>评测</h2>
+        <table class="judging-table table table-striped table-hover table-sm" style="width: auto;">
+            <thead>
+            <tr>
+                <td></td>
+                <th scope="col">ID</th>
+                <th scope="col">开始</th>
+                <th scope="col">最大运行时间</th>
+                <th scope="col">评测机</th>
+                <th scope="col">结果</th>
+                <th scope="col">重判</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for judging in judgings %}
+                {% set link = path('jury_submission', {submitId: submission.submitid, jid: judging.judgingid}) %}
+                <tr {% if not judging.valid %}class="disabled"{% endif %}>
+                    <td>
+                        <a href="{{ link }}">
+                            {% if selectedJudging is not null and selectedJudging.judgingid == judging.judgingid %}
+                                <i class="fas fa-long-arrow-alt-right"></i>
+                            {% else %}
+                                &nbsp;
+                            {% endif %}
+                        </a>
+                    </td>
+                    <td><a href="{{ link }}">j{{ judging.judgingid }}</a></td>
+                    <td><a href="{{ link }}">{{ judging.starttime | printtime(null, submission.contest) }}</a></td>
+                    <td>
+                        <a href="{{ link }}">
+                            {% if maxRunTimes[judging.judgingId] is not null %}
+                                {{ maxRunTimes[judging.judgingId] }}s
+                            {% endif %}
+                        </a>
+                    </td>
+                    <td>
+                        <a href="{{ link }}">
+                            {{ judging.judgehosts | printHosts }}
+                        </a>
+                    </td>
+                    <td>
+                        <a href="{{ link }}">
+                            {{ judging.result | printResult(judging.valid, true) }}
+                            {% if judging.stillBusy %}
+                                (&hellip;)
+                            {% endif %}
+                        </a>
+                    </td>
+                    <td>
+                        <a href="{{ link }}">
+                            {% if judging.rejudging is not null %}
+                                r{{ judging.rejudging.rejudgingid }} ({{ judging.rejudging.reason }})
+                            {% endif %}
+                        </a>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    {% if unjudgableReasons is not empty %}
+        {% for reason in unjudgableReasons %}
+            <div class="alert alert-danger">{{ reason }}</div>
+        {% endfor %}
+    {% endif %}
+
+    {% if selectedJudging is not null or externalJudgement is not null %}
+
+        {% if selectedJudging is not null %}
+
+            {# Show judging information #}
+            <div class="mb-2">
+                <h3 style="display: inline;">
+                    评测 j{{ selectedJudging.judgingid }}
+                    {% if selectedJudging.rejudging %}
+                        （重判
+                        <a href="{{ path('jury_rejudging', {rejudgingId: selectedJudging.rejudging.rejudgingid}) }}">
+                            r{{ selectedJudging.rejudging.rejudgingid }}</a>，原因：{{ selectedJudging.rejudging.reason }}）
+                    {% elseif not selectedJudging.valid %}
+                        （无效）
+                    {% endif %}
+
+                    <span style="font-size: 70%; font-weight: normal;">
+                        {% if not submission.importError %}
+                            {% if selectedJudging is null or selectedJudging.result is empty %}
+                                {%- if selectedJudging and selectedJudging.started %}
+                                    {{- '' | printValidJuryResult -}}
+                                {%- else %}
+                                    {{- 'queued' | printValidJuryResult -}}
+                                {%- endif %}
+                            {%- else %}
+                                {{- selectedJudging.result | printValidJuryResult -}}
+                            {%- endif %}
+                            {%- if submission.stillBusy -%}
+                                (&hellip;)
+                            {%- endif -%}
+                        {% endif %}
+                        {%- if lastJudging is not null -%}
+                            {% set lastSubmissionLink = path('jury_submission', {submitId: lastSubmission.submitid}) %}{#-
+                        -#}<span class="lastresult">
+                            (<a href="{{ lastSubmissionLink }}">s{{ lastSubmission.submitid }}</a>: {{ lastJudging.result | printResult }}){#-
+                        -#}</span>
+                        {%- endif -%}
+                        {%- if externalJudgement is not null %}
+                            {% if submission.importError %}
+                                外部结果：{{ externalJudgement.result | printValidJuryResult }}
+                            {% else %}
+                                （外部： {{ externalJudgement.result | printValidJuryResult }})
+                            {% endif %}
+                        {%- endif %}
+                        {%- if selectedJudging is not null and judgehosts is not empty -%}
+                            ，位于 {{ judgehosts | printHosts }}
+                            {%- if selectedJudging.starttime -%}
+                                {%- if selectedJudging.endtime -%}
+                                    ，开始于 <span title="{{ selectedJudging.starttime | printtime('Y-m-d H:i:s (T)') }}">{{ selectedJudging.starttime | printtime('H:i') }}</span>
+                                    ，耗时 <span title="completed: {{ selectedJudging.endtime | printtime('Y-m-d H:i:s (T)') }}">{{ selectedJudging.starttime | printHumanTimeDiff(selectedJudging.endtime) }}</span>
+                                {%- elseif selectedJudging.valid or selectedJudging.rejudging -%}
+                                    &nbsp;[仍在评测 - 忙碌 {{ selectedJudging.starttime | printtimediff }}]
+                                {%- else -%}
+                                    &nbsp;[已中止]
+                                {%- endif -%}
+                            {%- else -%}
+                                ，尚未开始
+                            {%- endif -%}
+                        {%- endif -%}
+                        {%- if externalJudgement is not null %}
+                            <span class="judgetime">（外部评测开始： {{ externalJudgement.starttime | printtime('H:i:s') }}
+                                {%- if externalJudgement.endtime -%}
+                                    ，耗时 {{ externalJudgement.starttime | printtimediff(externalJudgement.endtime) }} 秒
+                                {%- else -%}
+                                    &nbsp;[still judging - busy {{ externalJudgement.starttime | printtimediff }}]
+                                {%- endif -%}
+                            )</span>
+                        {%- endif -%}
+                    </span>
+                </h3>
+
+                <div style="float: right;">
+                    {% if selectedJudging.debugPackages | length > 0 %}
+                       {% for debug_package in selectedJudging.debugPackages %}
+                           <a href="{{ path('download_full_debug', {'debug_package_id': debug_package.debugPackageId }) }}">
+                               <button class="btn btn-sm btn-outline-secondary" >
+                                   <i class="fas fa-download"></i>
+                                   调试包（{{ debug_package.judgehost.hostname }}）
+                               </button>
+                           </a>
+                       {% endfor %}
+                    {% else %}
+                        {% if not requestedOutputCount %}
+                            <a href="{{ path('request_full_debug', {'jid': selectedJudging.judgingid}) }}">
+                                <button class="btn btn-sm btn-outline-secondary" >
+                                    <i class="fas fa-upload"></i>获取完整调试包</button>
+                            </a>
+                        {% endif %}
+                    {% endif %}
+                &nbsp;
+                {% if not selectedJudging.verified %}
+                    <form action="{{ path('jury_submission', {submitId: submission.submitid, jid: selectedJudging.judgingid}) }}"
+                          method="post" style="display: inline;">
+                        {% if selectedJudging.juryMember is not empty %}
+                            （由 {{ selectedJudging.juryMember }} 认领）
+                            <input type="hidden" name="forceclaim" value="1"/>
+                        {% endif %}
+                        {% if app.user.username == selectedJudging.juryMember %}
+                            <input type="submit" value="unclaim" name="unclaim" class="btn btn-outline-secondary btn-sm"/>
+                        {% else %}
+                            <input type="submit" value="claim" name="claim" class="btn btn-outline-secondary btn-sm"/>
+                        {% endif %}
+                    </form>
+                {% endif %}
+                &nbsp;
+                {% if selectedJudging is null or selectedJudging.result is empty %}
+                    {%- if not selectedJudging or not selectedJudging.started %}
+                        <a href="{{ path('jury_submission_create_tasks', {'submitId': submission.submitid}) }}">
+                            <button class="btn btn-sm btn-outline-secondary" >
+                                <i class="fas fa-gavel"></i>评测提交</button>
+                        </a>
+                    {%- endif %}
+                {%- endif %}
+                </div>
+            </div>
+        {% endif %}
+
+        {# Display compile output #}
+        {% set color = '#6666FF' %}
+        {% set message = 'not finished yet' %}
+        {% set output = null %}
+        {% if selectedJudging is not null %}
+            {% set output = selectedJudging.outputCompile(true) %}
+        {% endif %}
+        {% if output is not null %}
+            {% if selectedJudging.result == 'compiler-error' %}
+                {% set message = 'unsuccessful' %}
+            {% else %}
+                {% set message = 'successful' %}
+                {% if output is not empty %}
+                    {% set outputLines = output | lineCount %}
+                    {% if outputLines == 1 %}
+                        {% set message = message ~ ' (with 1 line of output)' %}
+                    {% else %}
+                        {% set message = message ~ ' (with ' ~ outputLines ~ ' lines of output)' %}
+                    {% endif %}
+                {% endif %}
+            {% endif %}
+        {% endif %}
+        编译 <span class="compile-{{ message }}">{{ message }}</span>
+        {% if selectedJudging is not null and selectedJudging.compileMetadata is not null %}
+            {{ selectedJudging.compileMetadata | printMetadata }}
+            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse"
+                    data-bs-target="#collapseExample-compilemeta"
+                    aria-expanded="false">编译元数据</button>
+            <div class="collapse" id="collapseExample-compilemeta">
+                <div class="card card-body output_text">{{ selectedJudging.compileMetadata }}</div>
+            </div>
+        {% endif %}
+        {% if output and selectedJudging is not null and selectedJudging.result != 'compiler-error' %}
+            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse"
+                    data-bs-target="#detailcompile"
+                    aria-expanded="false">编译输出</button>
+        {% endif %}
+        <div class="card mb-3 {% if selectedJudging is null or selectedJudging.result != 'compiler-error' %}collapse{% endif%}"
+             id="detailcompile">
+            <div class="card-header">编译输出</div>
+            {% if output is empty %}
+                <div class="card-body nodata">没有编译器错误或警告。</div>
+            {% else %}
+                <div class="card-body"><pre class="output_text">{{ output }}</pre></div>
+            {% endif %}
+        </div>
+
+        <div class="mb-2">
+            {# Display testcase results #}
+            {% if externalJudgement is not null or (selectedJudging is not null and selectedJudging.result != 'compiler-error') %}
+                <table>
+                    {% if not submission.importError %}
+                        <tr>
+                            <td>
+                                {% if selectedJudging is null %}
+                                    {% set judgingDone = false %}
+                                {% else %}
+                                    {% set judgingDone = selectedJudging.endtime is not empty %}
+                                {% endif %}
+                                {{ runs | displayTestcaseResults(judgingDone) }}
+                            </td>
+                            <td>
+                                {% if selectedJudging is not null and runsOutstanding %}
+                                    {% if selectedJudging.judgeCompletely %}
+                                        <i class="fas fa-balance-scale" title="remaining test cases requested to be judged"></i>
+                                    {% elseif selectedJudging.result is not null or isAnalystMode %}
+                                        <form action="{{ path('jury_submission_request_remaining', {'judgingId': selectedJudging.judgingid}) }}" method="post"
+                                              style="display: inline; ">
+                                            <button type="submit" class="btn btn-outline-secondary btn-sm" style="padding: 0.1rem 0.5rem; font-size: 0.7em"><i class="fa-solid fa-gavel"></i>评测剩余</button>
+                                        </form>
+                                    {% endif %}
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endif %}
+                    {% if externalJudgement is not null %}
+                        <tr>
+                            <td>
+                                {{ externalRuns | displayTestcaseResults(externalJudgement.endtime is not empty, true) }}
+                            </td>
+                            <td>
+                                {% if externalSubmissionUrl is defined and externalSubmissionUrl is not empty %}
+                                    <a href="{{ externalSubmissionUrl }}">
+                                {% endif %}
+                                外部
+                                {% if externalSubmissionUrl is defined and externalSubmissionUrl is not empty %}
+                                    </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endif %}
+                    {% if lastJudging is not null %}
+                        <tr class="lasttcruns">
+                            <td>
+                                {{ lastRuns | displayTestcaseResults(lastJudging.endtime is not empty) }}
+                            </td>
+                            <td>
+                                <a href="{{ lastSubmissionLink }}">上一 s{{ lastSubmission.submitid }}</a>
+                                {% if lastJudging.verifyComment %}
+                                    <span class="prevsubmit">（验证备注：'{{ lastJudging.verifyComment }}'）</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endif %}
+                </table>
+
+            {% endif %}
+        </div>
+
+        {# Show verify info, but only when a result is known #}
+        {% if selectedJudging is not null and selectedJudging.result is not empty %}
+            {% include 'jury/partials/verify_form.html.twig' with {
+                label: 'Verified',
+                judging: selectedJudging,
+                form_action: path('jury_judging_verify', {judgingId: selectedJudging.judgingid}),
+                show_form: not (verificationRequired and selectedJudging.verified and selectedJudging.valid),
+                show_icat: true} %}
+            {% if submission.contestProblem and icat_url %}
+                <script>
+                    $(function () {
+                        $('#post-to-icat').on('click', function () {
+                            postVerifyCommentToICAT(
+                                '{{ icat_url }}/insert_entry.php',
+                                '{{ app.user.username }}',
+                                '{{ submission.team.teamid }}',
+                                '{{ submission.contestProblem.shortname }}',
+                                '{{ submission.externalid }}'
+                            );
+                            alert('Comment posted to iCAT.');
+                            return false;
+                        });
+                    });
+                </script>
+            {% endif %}
+        {% elseif selectedJudging is not null %}
+            <div class="alert alert-warning">评测尚未就绪！</div>
+        {% endif %}
+
+        {% if (selectedJudging is not null and selectedJudging.result != 'compiler-error')
+            or (externalJudgement is not null and externalJudgement.result != 'compiler-error') %}
+            {% include 'jury/partials/submission_graph.html.twig' %}
+        {% endif %}
+
+        <hr>
+        <br>
+
+        {% if externalJudgement is not null or (selectedJudging is not null and selectedJudging.result != 'compiler-error') %}
+            {# Show run info. Only when compilation was successful or we have an external judgement #}
+            {% for runIdx, run in runs %}
+                {% set externalRun = null %}
+                {% if externalRuns[runIdx] is defined %}
+                    {% set externalRun = externalRuns[runIdx] %}
+                {% endif %}
+                <div id="run-{{run.rank}}"
+                     style="margin-bottom: 20px;"
+                     class="card run {% if run.firstJudgingRun and run.firstJudgingRun.runresult == 'correct' %}run_correct{% endif %}">
+                    <div class="card-header">
+                        运行 #{{ run.rank }}
+                        {% if run.origInputFilename is not null %}
+                            | <span class="filename">{{ run.origInputFilename }}.in</span>
+                        {% else %}
+                            {% if run.description is not null %}
+                                | {{ run.description(true) }}
+                            {% endif %}
+                        {% endif %}
+                        {% if run.firstJudgingRun is not null %}
+                            |
+                            {% if run.firstJudgingRun.runresult is not null %}
+                                <span class="sol {% if run.firstJudgingRun.runresult == 'correct' %}sol_correct{% else %}sol_incorrect{% endif %}">
+                                    {{ run.firstJudgingRun.runresult }}
+                                </span>
+                                {% if run.firstJudgingRun.runresult == 'timelimit' %}
+                                    {% if runsOutput[runIdx].terminated %}
+                                        <b>（已终止）</b>
+                                    {% else %}
+                                        <b>（延迟完成）</b>
+                                    {% endif %}
+                                {% endif %}
+                            {% else %}
+                                <span class="sol sol_queued">
+                                   {% if runsOutput[runIdx].hostname is null %}
+                                       已排队
+                                   {% else %}
+                                       评测中
+                                   {% endif %}
+                                </span>
+                            {% endif %}
+                        {% endif %}
+                        {% if runsOutput[runIdx].hostname is not null %}
+                            {% set judgehostLink = path('jury_judgehost', {judgehostid: runsOutput[runIdx].judgehostid}) %}
+                            | <a href="{{ judgehostLink }}">{{ runsOutput[runIdx].hostname | printHost }}</a>
+                        {% endif %}
+                        {% if externalRun is not null and externalRun.firstExternalRun is not null %}
+                            {% if externalRun.firstExternalRun is not null %}
+                                （外部：
+                                <span class="sol {% if externalRun.firstExternalRun.result == 'correct' %}sol_correct{% else %}sol_incorrect{% endif %}">
+                                    {{ externalRun.firstExternalRun.result }}{#-
+                                -#}</span>{#-
+                                -#})
+                            {% endif %}
+                        {% endif %}
+                        {% if runsOutput[runIdx].testcasedir is defined and runsOutput[runIdx].testcasedir is not null %}
+                          | <code>.../{{ runsOutput[runIdx].testcasedir | split('/') | last }}</code>{#-
+                            -#}<button type="button" class="btn btn-link" onclick="navigator.clipboard.writeText('{{ runsOutput[runIdx].testcasedir }}')"><i class="fa-regular fa-copy"></i></button>
+                        {% endif %}
+                        <div style="float: right;">
+                            <a href="{{ path('jury_problem_testcase_fetch', {'probId': submission.problem.probid, 'rank': run.rank, 'type': 'input'}) }}">
+                                <button class="btn btn-sm btn-outline-secondary" >
+                                    <i class="fas fa-download"></i>输入</button>
+                            </a>
+                            <a href="{{ path('jury_problem_testcase_fetch', {'probId': submission.problem.probid, 'rank': run.rank, 'type': 'output'}) }}">
+                                <button class="btn btn-sm btn-outline-secondary" >
+                                    <i class="fas fa-download"></i>参考输出</button>
+                            </a>
+                            {% if run.firstJudgingRun is not null %}
+                                <a href="{{ path('jury_submission_team_output', {'submission': submission.submitid, 'run': run.firstJudgingRun.runid, 'contest': submission.contest.cid}) }}">
+                                    <button class="btn btn-sm btn-outline-secondary" >
+                                        <i class="fas fa-download"></i>
+                                        {% if runsOutput[runIdx].is_output_run_truncated_in_db %}
+                                            已截断
+                                        {% endif %}
+                                        队伍输出
+                                    </button>
+                                </a>
+                                {% if runsOutput[runIdx].is_output_run_truncated_in_db %}
+                                    <a href="{{ path('request_output', {'jid': run.firstJudgingRun.judgingid, 'jrid': run.firstJudgingRun.runid}) }}">
+                                        <button class="btn btn-sm btn-outline-secondary" >
+                                            <i class="fas fa-upload"></i>获取完整队伍输出</button>
+                                    </a>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="card-body">
+                    {% if run.firstJudgingRun is not null %}
+                        {% if run.firstJudgingRun.runresult != 'correct' and isMultiPassProblem %}
+                            <div class="alert alert-warning">请注意这是多趟运行的题目，仅显示失败趟次的数据。</div>
+                        {% endif %}
+                        {{ runsOutput[runIdx].metadata | printMetadata }}
+                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse"
+                                data-bs-target="#collapseExample-{{ runIdx }}"
+                                aria-expanded="false">显示完整元数据</button>
+                        {% if runsOutput[runIdx].metadata is not null %}
+                            {% if runsOutput[runIdx].output_limit is defined and runsOutput[runIdx].output_limit %}
+                                <div class="alert alert-warning">提交输出（<code>{{ runsOutput[runIdx].output_limit }}</code>）被
+                                    因配置的输出限制而被截断。
+                                </div>
+                            {% endif %}
+                            <div class="collapse" id="collapseExample-{{ runIdx }}">
+                                  <div class="card card-body output_text">{{ runsOutput[runIdx].metadata }}</div>
+                            </div>
+                        {% endif %}
+                    </span>
+                    {% endif %}
+                    {% if run.description is not null %}
+                        <p><em>
+                            {{ run.description(true) | descriptionExpand }}
+                        </em></p>
+                    {% endif %}
+                    {% if runsOutput[runIdx].image_thumb %}
+                        <span style="float:right; border: 3px solid #438ec3; margin: 5px; padding: 5px;">
+                            {% set imgUrl = path('jury_problem_testcase_fetch', {'probId': submission.problem.probid, 'rank': run.rank, 'type': 'image'}) %}
+                            <a href="{{ imgUrl }}">
+                                <img class="image_thumb" src="data:{{ run.imageType | extensionToMime }};base64,{{ runsOutput[runIdx].image_thumb | base64 }}"/>
+                            </a>
+                        </span>
+                    {% endif %}
+
+                    {% set runDone = false %}
+                    {% if run is not null and run.firstJudgingRun is not null and run.firstJudgingRun.runresult is not null %}
+                        {% set runDone = true %}
+                    {% endif %}
+                    {% if not runDone %}
+                        <p class="nodata">
+                            {% if selectedJudging is not null and selectedJudging.result %}
+                                该运行不用于最终结果。
+                            {% else %}
+                                运行尚未开始/结束。
+                            {% endif %}
+                        </p>
+                    {% else %}
+                        {% if run.firstJudgingRun is not null and run.firstJudgingRun.runresult is not null %}
+                            {% if combinedRunCompare %}
+                                <h5>验证器输出</h5>
+                                {% if runsOutput[runIdx].output_diff is empty %}
+                                    <p class="nodata">没有验证器输出。</p>
+                                {% else %}
+                                    <pre class="output_text">{{ runsOutput[runIdx].output_diff }}</pre>
+                                {% endif %}
+                            {% else %}
+                                <h5>差异输出</h5>
+                                {% if runsOutput[runIdx].output_diff is empty %}
+                                    <p class="nodata">没有差异输出。</p>
+                                {% else %}
+                                    <pre class="output_text">{{ runsOutput[runIdx].output_diff }}</pre>
+                                {% endif %}
+
+                                {% if run.firstJudgingRun.runresult != 'correct' %}
+                                    {{ runsOutput[runIdx] | runDiff }}
+                                {% endif %}
+                            {% endif %}
+
+                            {% if combinedRunCompare %}
+                                <h5>验证器/提交交互</h5>
+                                {% if runsOutput[runIdx].output_run is empty %}
+                                    <p class="nodata">没有交互日志。</p>
+                                {% else %}
+                                    {{ runsOutput[runIdx].output_run | interactiveLog }}
+                                {% endif %}
+                            {% else %}
+                                <h5>程序输出</h5>
+                                {% if runsOutput[runIdx].output_run is empty %}
+                                    <p class="nodata">没有程序输出。</p>
+                                {% else %}
+                                    <pre class="output_text">{{ runsOutput[runIdx].output_run }}</pre>
+                                {% endif %}
+                            {% endif %}
+
+                            <h5>程序错误输出</h5>
+                            {% if runsOutput[runIdx].output_error is empty %}
+                                <p class="nodata">没有标准错误输出。</p>
+                            {% else %}
+                                <pre class="output_text">{{ runsOutput[runIdx].output_error }}</pre>
+                            {% endif %}
+
+                            <h5>评测系统输出（信息/调试/错误）</h5>
+                            {% if runsOutput[runIdx].output_system is empty %}
+                                <p class="nodata">没有评测系统输出。</p>
+                            {% else %}
+                                <pre class="output_text">{{ runsOutput[runIdx].output_system }}</pre>
+                            {% endif %}
+
+                            {% if runsOutput[runIdx].team_message is not empty %}
+                                <h5>给队伍的消息</h5>
+                                <pre class="output_text">
+{{  runsOutput[runIdx].team_message }}</pre>
+                            {%  endif %}
+                        {% endif %}
+
+                        {% if runsOutput[runIdx].validatorMetadata is not empty %}
+                            <hr/>
+                            <h5>验证器元数据</h5>
+                            {{ runsOutput[runIdx].validatorMetadata | printMetadata }}
+                            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse"
+                                    data-bs-target="#collapseValMeta-{{ runIdx }}"
+                                    aria-expanded="false">显示完整验证器元数据</button>
+                            <div class="collapse" id="collapseValMeta-{{ runIdx }}">
+                                <div class="card card-body output_text">{{ runsOutput[runIdx].validatorMetadata  }}</div>
+                            </div>
+
+                        {% endif %}
+                    {% endif %}
+
+                    </div>
+                </div>
+            {% endfor %}
+
+            <script>
+                function display_correctruns(show) {
+                    elements = document.getElementsByClassName('run_correct');
+                    for (var i = 0; i < elements.length; i++) {
+                        elements[i].style.display = show ? 'block' : 'none';
+                    }
+                }
+
+                display_correctruns(false);
+            </script>
+        {% endif %} {# selectedJudging.result != 'compiler-error' #}
+
+    {% endif %} {# selectedJudging is not null or externalJudgement is not null #}
+
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "jury/base.html.twig" %}
+
+{% block title %}删除 {{ type }} {{ primaryKey }} - "{{ description }}" - {{ parent() }}{% endblock %}
+
+
+{% block content %}
+
+    <h1>删除 {{ type }} {{ primaryKey }} - "{{ description }}"</h1>
+
+    {% if isError %}
+        <div class="alert alert-danger">
+            <strong>错误：{{ messages.0 }}</strong>
+        </div>
+    {% else %}
+        <div class="alert alert-warning">
+            <form method="post">
+                <p>即将删除 {{ type }} {{ primaryKey }} "{{ description }}"。</p>
+
+                {% if messages is not empty %}
+                    <p>
+                        <strong>警告，此操作将：</strong>
+                    </p>
+                    <ul>
+                        {% for message in messages %}
+                            <li>{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+
+                <p>确定吗？</p>
+                <hr>
+                <a href="{{ redirectUrl }}" class="btn btn-secondary">取消</a>
+                <button type="submit" class="btn btn-danger">删除</button>
+            </form>
+        </div>
+    {% endif %}
+
+{% endblock %}

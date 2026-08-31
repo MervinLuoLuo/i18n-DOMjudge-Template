@@ -1,0 +1,44 @@
+{% if not judgings %}
+    <div class="alert alert-warning">无评测</div>
+{% else %}
+    <table class="data-table table table-sm table-striped col-lg-4">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>开始时间</th>
+            <th>运行时间</th>
+            <th>结果</th>
+            <th>是否有效</th>
+            <th>是否验证</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for judging in judgings %}
+            {% set link = path('jury_submission_by_judging', {jid: judging.judgingid}) %}
+            <tr class="{% if not judging.valid %}disabled{% endif %}">
+                <td><a href="{{ link }}">{{ judging.judgingid }}</a></td>
+                <td><a href="{{ link }}">{{ judging.starttime | printtime }}</a></td>
+                <td>
+                    <a href="{{ link }}">
+                        {% if judging.aborted %}
+                            [已中止]
+                        {% else %}
+                            {{ judging.starttime | printtimediff(judging.endtime) }}
+                        {% endif %}
+                    </a>
+                </td>
+                <td>
+                    <a href="{{ link }}">
+                        {{ judging.result | printResult(judging.valid) }}
+                        {% if judging.stillBusy %}
+                            (&hellip;)
+                        {% endif %}
+                    </a>
+                </td>
+                <td><a href="{{ link }}">{{ judging.valid | printYesNo }}</a></td>
+                <td><a href="{{ link }}">{{ judging.verified | printYesNo }}</a></td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% endif %}

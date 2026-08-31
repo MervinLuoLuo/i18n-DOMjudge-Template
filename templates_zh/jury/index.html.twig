@@ -1,0 +1,106 @@
+{% extends "jury/base.html.twig" %}
+
+{% block title %}{{ parent() }} - 裁判界面{% endblock %}
+
+{% block extrahead %}
+{{ parent() }}
+{% endblock %}
+
+{% block content %}
+<h1>DOMjudge 裁判界面</h1>
+
+<a href="https://www.domjudge.org/">
+  <img src="{{ asset('images/DOMjudgelogo.svg') }}" id="djlogo" alt="DOMjudge logo" class="float-end d-none d-md-block" title="The DOMjudge logo: free as in beer!">
+</a>
+
+<div class="row equal mt-3">
+    <div class="col-lg-4 col-md-5 col-sm-6 mt-3">
+        {% if is_granted('ROLE_JURY') %}
+        <div class="card mb-3">
+            <div class="card-header">比赛前：</div>
+            <div class="card-body">
+                <ul>
+                    <li><a href="{{ path('jury_contests') }}">比赛</a></li>
+                    <li><a href="{{ path('jury_executables') }}">执行脚本</a></li>
+                    <li><a href="{{ path('jury_judgehosts') }}">评测机</a></li>
+                    <li><a href="{{ path('jury_languages') }}">可使用语言</a></li>
+                    <li><a href="{{ path('jury_problems') }}">题目</a></li>
+                    <li><a href="{{ path('jury_problemset') }}">参赛队伍题面页面预览</a></li>
+                    <li><a href="{{ path('jury_users') }}">用户</a></li>
+                    <li><a href="{{ path('jury_teams') }}">队伍</a></li>
+                    <li><a href="{{ path('jury_team_categories') }}">队伍类别</a></li>
+                    <li><a href="{{ path('jury_team_affiliations') }}">队伍机构</a></li>
+                    <li><a href="{{ path('jury_judging_verifier') }}">评测验证器</a></li>
+                    <li><a href="{{ path('jury_versions') }}">编译器和运行器版本</a></li>
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="card mb-3">
+            <div class="card-header">比赛中：</div>
+            <div class="card-body">
+                <ul>
+                    {% if is_granted('ROLE_ADMIN') or is_granted('ROLE_BALLOON') %}
+                        <li><a href="{{ path('jury_balloons') }}">气球情况</a></li>
+                    {% endif %}
+                    {% if is_granted('ROLE_CLARIFICATION_RW') %}
+                        <li><a href="{{ path('jury_clarifications') }}">公告 / 质询</a></li>
+                    {% endif %}
+                    {% if is_granted('ROLE_JURY') %}
+                        <li><a href="{{ path('jury_internal_errors') }}">内部错误</a></li>
+                    {% endif %}
+                    {% if have_printing %}
+                        <li><a href="{{ path('jury_print') }}">打印</a></li>
+                    {% endif %}
+                    {% if is_granted('ROLE_JURY') %}
+                        <li><a href="{{ path('jury_rejudgings') }}">重测</a></li>
+                        <li><a href="{{ path('jury_scoreboard') }}">榜单</a></li>
+                        <li><a href="{{ path('analysis_index') }}">统计/分析</a></li>
+                        <li><a href="{{ path('jury_submissions') }}">提交情况</a></li>
+                        {% if is_granted('ROLE_ADMIN') %}
+                            <li><a href="{{ path('jury_queue_tasks') }}">评测队列</a></li>
+                        {% endif %}
+                        {% if show_shadow_differences %}
+                            <li><a href="{{ path('jury_shadow_differences') }}">影子差异</a></li>
+                            <li><a href="{{ path('jury_external_contest') }}">外部比赛</a></li>
+                        {% endif %}
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+  <div class="col-lg-4 col-md-5 col-sm-6 mt-3">
+    {% if is_granted('ROLE_ADMIN') %}
+    <div class="card mb-3">
+      <div class="card-header">管理员：</div>
+      <div class="card-body">
+        <ul>
+          <li><a href="{{ path('jury_config') }}">系统设置</a></li>
+          <li><a href="{{ path('jury_config_check') }}">配置检查</a></li>
+          <li><a href="{{ path('jury_import_export') }}">导入 / 导出</a></li>
+          <li><a href="{{ path('jury_generate_passwords') }}">密码随机生成工具</a></li>
+          <li><a href="{{ path('jury_refresh_cache') }}">刷新榜单缓存</a></li>
+          <li><a href="{{ path('jury_auditlog') }}">审计日志</a></li>
+          {% if adminer_enabled %}
+            <li><a href="{{ path('jury_adminer', {username: '', db: 'domjudge'}) }}">Adminer 数据库编辑器</a></li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card mb-3">
+      <div class="card-header">文档：</div>
+      <div class="card-body">
+        <ul>
+        <li><a href="{{ asset('doc/manual/html/index.html') }}">DOMjudge 手册</a></li>
+        <li><a href="{{ asset('doc/manual/domjudge-team-manual.pdf') }}">队伍手册<i class="fas fa-file-pdf"></i></a></li>
+        <li><a href="{{ path('app.swagger_ui') }}">API 文档</a><br />另见<a href="{{ CCS_SPEC_API_URL }}">ICPC 比赛 API</a>.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

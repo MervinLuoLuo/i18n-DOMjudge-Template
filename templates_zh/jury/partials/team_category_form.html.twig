@@ -1,0 +1,13 @@
+<div class="row">
+    <div class="col-lg-4">
+        {{ form_start(form) }}
+        {{ form_row(form.externalid,{'label': '外部 ID','help': '留空则自动生成'}) }}
+        {{ form_row(form.icpcid,{'help': '(可选)队伍在 ICPC CMS 中的 ID'})}}
+        {{ form_row(form.name,{'label': '名称'})  }}
+        {{ form_row(form.sortorder, {'label': '简称'}) }}
+        {{ form_row(form.color, {'label': '颜色'}) }}
+        {{ form_row(form.visible, {'label': '是否可见'}) }}
+        {{ form_row(form.allow_self_registration, {'label': '允许自行注册'}) }}
+        {{ form_end(form) }}
+    </div>
+</div>

@@ -1,0 +1,489 @@
+{% extends "jury/base.html.twig" %}
+{% import "jury/jury_macros.twig" as macros %}
+
+{% block title %}比赛 {{ contest.cid }} - {{ parent() }}{% endblock %}
+
+{% block extrahead %}
+    {{ parent() }}
+    {{ macros.table_extrahead() }}
+    {{ macros.toggle_extrahead() }}
+{% endblock %}
+
+{% block content %}
+
+    {% set time_button_labels = {
+        'activate': '立即激活',
+        'start': '立即开始',
+        'freeze': '立即冻结',
+        'end': '立即结束',
+        'unfreeze': '立即解冻',
+        'finalize': '立即定级',
+        'deactivate': '立即停用',
+        'delay_start': '延迟开始',
+        'resume_start': '恢复开始'
+    } %}
+
+    {% set time_labels = {
+        'activate': '启用时间',
+        'start': '开始时间',
+        'freeze': '封榜时间',
+        'end': '结束时间',
+        'unfreeze': '解榜时间',
+        'finalize': '定级时间',
+        'deactivate': '停用时间'
+    } %}
+
+    <h1>比赛: {{ contest.name }}</h1>
+
+    {% if contest.isActive %}
+        <div class="alert alert-success">该比赛当前处于活动状态</div>
+    {% endif %}
+    {% if not contest.enabled %}
+        <div class="alert alert-danger">该比赛已禁用</div>
+    {% endif %}
+    {% if contest.finalizetime is not empty %}
+        <div class="alert alert-info">该比赛已定级</div>
+    {% endif %}
+    {%- if is_granted('ROLE_ADMIN') and contest.isLocked -%}
+        <div class="alert alert-warning">该比赛已锁定, 解锁后才能编辑比赛数据</div>
+    {% endif %}
+
+    <div class="row">
+        <div class="col-lg-5">
+            <table class="table table-sm table-striped">
+                <tr>
+                    <th>比赛 ID</th>
+                    <td>c{{ contest.cid }}</td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <th>外部 ID</th>
+                    <td>{{ contest.externalid }}</td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <th>比赛简称</th>
+                    <td>{{ contest.shortname }}</td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <th>比赛类型</th>
+                    <td>{{ contest.scoreboardType.value }}</td>
+                    <td></td>
+                </tr>
+                {% for type, data in contest.dataForJuryInterface %}
+                    <tr>
+                        <td class="{{ data.class | default('') }}"><b>{{ time_labels[type]|default(data.label) }}:</b></td>
+                        <td class="{{ data.class | default('') }}">
+                            {{ data.time }}
+                            {% if data.icon is defined %}
+                                <i class="fas fa-{{ data.icon }}"></i>
+                            {% endif %}
+                        </td>
+                        {% if is_granted('ROLE_ADMIN') %}
+                            <td>
+                                {% if data.show_button %}
+                                    {{ button(
+                                        path('jury_contest_donow', {'contestId': contest.cid, 'time': type}),
+                                        time_button_labels[type]|default(type ~ ' now'),
+                                        'primary btn-sm timebutton'
+                                    ) }}
+                                {% endif %}
+                                {% if data.extra_button is defined %}
+                                    {{ button(
+                                        path('jury_contest_donow', {'contestId': contest.cid, 'time': data.extra_button.type}),
+                                        time_button_labels[data.extra_button.type]|default(data.extra_button.label),
+                                        'primary btn-sm timebutton'
+                                    ) }}
+                                {% endif %}
+                                {% if type == 'finalize' %}
+                                    {% if contest.finalizetime %}
+                                        {{ button(path('jury_contest_finalize', {'contestId': contest.cid}), '更新定级', 'secondary btn-sm timebutton') }}
+                                    {% endif %}
+                                {% endif %}
+                            </td>
+                        {% else %}
+                            <td></td>
+                        {% endif %}
+                    </tr>
+                {% endfor %}
+                <tr>
+                    <th>是否开放提交</th>
+                    <td>
+                        {% include 'jury/partials/contest_toggle.html.twig' with {type: 'submit', enabled: contest.allowSubmit} %}
+                    </td>
+                    <td></td>
+                </tr>
+                {% if contest.contestProblemsetType is not empty %}
+                    <tr>
+                        <th>题面</th>
+                        <td>
+                            <a href="{{ path('jury_contest_problemset', {'cid': contest.cid}) }}">
+                                <i title="view problemset document of the contest"
+                                   class="fas fa-file-{{ contest.contestProblemsetType }}"></i>
+                            </a>
+                        </td>
+                        <td></td>
+                    </tr>
+                {% endif %}
+                <tr>
+                    <th>是否分发气球</th>
+                    <td>
+                        {% include 'jury/partials/contest_toggle.html.twig' with {type: 'balloons', enabled: contest.processBalloons} %}
+                    </td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <th>运行时间算入罚时</th>
+                    <td>
+                        {% include 'jury/partials/contest_toggle.html.twig' with {type: 'tiebreaker', enabled: contest.runtimeAsScoreTiebreaker} %}
+                    </td>
+                </tr>
+                <tr>
+                    <th>是否颁发奖牌</th>
+                    <td>
+                        {% include 'jury/partials/contest_toggle.html.twig' with {type: 'medals', enabled: contest.medalsEnabled} %}
+                    </td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <th>奖牌</th>
+                    <td>
+                        {% if contest.medalsEnabled %}
+                            <div class="card">
+                                <h6 class="card-header" id="categories">
+                                    <a class="collapsed d-block text-dark pt-0 pb-0" data-bs-toggle="collapse" href="#collapsecategories" aria-expanded="true" aria-controls="collapsecategories" id="collapseheader">
+                                        {{ (contest.goldMedals > 0) + (contest.silverMedals > 0) + (contest.bronzeMedals > 0) }} 不同类型的奖牌（显示/隐藏详情）
+                                        <i class="fa fa-chevron-down float-end"></i>
+                                    </a>
+                                </h6>
+                                <div id="collapsecategories" class="collapse collapsed" aria-labelledby="categories">
+                                    <div class="card-body pb-1">
+                                        <a>{{ contest.goldMedals }} 金牌</a>
+                                        <br>
+                                        <a>{{ contest.silverMedals }} 银牌</a>
+                                        <br>
+                                        <a>{{ contest.bronzeMedals }} 铜牌</a>
+                                        <br>以下类别的所有队伍：<ul>
+                                            {% for category in contest.medalCategories %}
+                                                <li>
+                                                    <a href="{{ path('jury_team_category', {'categoryId': category.categoryid}) }}">
+                                                        {{ category.name }}
+                                                    </a>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <em>无</em>
+                        {% endif %}
+                    </td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <th>开放外榜</th>
+                    <td>
+                        {% include 'jury/partials/contest_toggle.html.twig' with {type: 'public', enabled: contest.public} %}
+                    </td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <th>对所有队伍开放</th>
+                    <td>{{ contest.openToAllTeams | printYesNo }}</td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <th>队伍</th>
+                    <td>
+                        {% if contest.openToAllTeams %}
+                            <em>所有队伍</em>
+                        {% else %}
+                            {% for team in contest.teams %}
+                                <a href="{{ path('jury_team', {'teamId': team.teamid}) }}">
+                                    {{ team.effectiveName }} {{ team | entityIdBadge('t') }}
+                                </a>
+                                <br>
+                            {% endfor %}
+                            {% for category in contest.teamCategories %}
+                                所有队伍来自
+                                <a href="{{ path('jury_team_category', {'categoryId': category.categoryid}) }}">
+                                    {{ category.name }}
+                                </a>
+                                <br>
+                            {% endfor %}
+                        {% endif %}
+                    </td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <th>可使用的编程语言</th>
+                    <td>
+                        {% if contest.languages is empty %}
+                            <em>所有全局启用的语言：</em>
+                            {% set allowedLanguages = languages %}
+                        {% else %}
+                            {% set allowedLanguages = contest.languages %}
+                        {% endif %}
+                        <ul>
+                            {% for language in allowedLanguages %}
+                                <li><a href="{{ path('jury_language', {"langId": language.langid}) }}">{{ language.name }}</a></li>
+                            {% endfor %}
+                        </ul>
+                    </td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <th>静态外榜 ZIP</th>
+                    <td>
+                        <a class="btn btn-sm btn-secondary" href="{{ path('jury_scoreboard_data_zip', {contestId: contest.cid, type: 'public'}) }}">
+                            <i class="fas fa-download"></i>下载</a>
+                    </td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <th>裁判样式静态榜单 ZIP</th>
+                    <td>
+                        <a class="btn btn-sm btn-secondary" href="{{ path('jury_scoreboard_data_zip', {contestId: contest.cid, type: 'unfrozen'}) }}">
+                            <i class="fas fa-download"></i>下载</a>
+                    </td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <th>样例数据 ZIP</th>
+                    <td>
+                        <a class="btn btn-sm btn-secondary" href="{{ path('jury_contest_samples_data_zip', {contestId: contest.cid}) }}">
+                            <i class="fas fa-download"></i>下载</a>
+                        <br/>
+                        <small class="text-muted">包含所有题目的样例、附件和题面。</small>
+                    </td>
+                    <td></td>
+                </tr>
+                {% set contestId = contest.externalid %}
+                {% set banner = contestId | assetPath('contest') %}
+                {% if not banner %}
+                    {% set banner = globalBannerAssetPath() %}
+                {% endif %}
+                {% if banner %}
+                    <tr>
+                        <th>横幅</th>
+                        <td><img style="max-width: 300px;" src="{{ asset(banner) }}" title="{{ contest.name }}" /></td>
+                        <td></td>
+                    </tr>
+                {% endif %}
+                <tr>
+                    <th>警告消息</th>
+                    <td>{{ contest.warningMessage }}</td>
+                    <td></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    {% if contest.finalizetime %}
+        <h2>已定级</h2>
+
+        <div class="row">
+            <div class="col-lg-4">
+                <table class="table table-sm table-striped">
+                    <tr>
+                        <th>定级于</th>
+                        <td>{{ contest.finalizetime | printtime('Y-m-d H:i:s (T)') }}</td>
+                    </tr>
+                    <tr>
+                        <th>B</th>
+                        <td>{{ contest.b }}</td>
+                    </tr>
+                    <tr>
+                        <th>备注</th>
+                        <td>{{ contest.finalizecomment | nl2br }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if allowRemovedIntervals %}
+        <h2>移除的时间区间</h2>
+        {% if not is_granted('ROLE_ADMIN') and contest.removedIntervals is empty %}
+            <p class="nodata">无。</p>
+        {% else %}
+            {% if removedIntervalForm is defined %}
+                {{ form_start(removedIntervalForm) }}
+            {% endif %}
+            <div class="row">
+                <div class="col-lg-6">
+                    <table class="table data-table table-sm table-striped table-hover">
+                        <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>发件人</th>
+                            <th></th>
+                            <th>收件人</th>
+                            <th>时长</th>
+                            <th></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for removedInterval in removedIntervals %}
+                            <tr>
+                                <td>{{ removedInterval.intervalid }}</td>
+                                <td>{{ removedInterval.starttimeString }}</td>
+                                <td><i class="fas fa-arrow-right"></i></td>
+                                <td>{{ removedInterval.endtimeString }}</td>
+                                <td>{{ removedInterval.starttime | printtimediff(removedInterval.endtime) }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-danger remove-interval-button" type="button"
+                                            data-submit-url="{{ path('jury_contest_remove_interval', {'contestId': contest.cid, 'intervalId': removedInterval.intervalid}) }}">
+                                        <i class="fas fa-trash-alt"></i></button>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        {% if is_granted('ROLE_ADMIN') %}
+                            <tr>
+                                <td>new</td>
+                                <td>
+                                    {{ form_errors(removedIntervalForm.starttimeString) }}
+                                    {{ form_widget(removedIntervalForm.starttimeString) }}
+                                </td>
+                                <td><i class="fas fa-arrow-right"></i></td>
+                                <td>
+                                    {{ form_errors(removedIntervalForm.endtimeString) }}
+                                    {{ form_widget(removedIntervalForm.endtimeString) }}
+                                </td>
+                                <td></td>
+                                <td>{{ form_widget(removedIntervalForm.add) }}</td>
+                            </tr>
+                        {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% if removedIntervalForm is defined %}
+                <small class="text-muted">使用格式<b><code>YYYY-MM-DD HH:MM:SS[.uuuuuu] 时区</code></b> for
+                    开始/结束时间。
+                </small>
+                {{ form_end(removedIntervalForm) }}
+            {% endif %}
+        {% endif %}
+
+        <script>
+            $(function () {
+                $('.remove-interval-button').on('click', function () {
+                    if (confirm('Really delete interval?')) {
+                        var $form = $('<form method="post" />');
+                        $form.attr('action', $(this).data('submit-url'));
+                        // Some browsers require the form to be present in the DOM,
+                        // so append it to the body
+                        $(document.body).append($form);
+                        $form.submit();
+                    }
+                    return false;
+                });
+            });
+        </script>
+
+    {% endif %}
+
+    <h2 class="mt-2">题目</h2>
+
+    {% if problems is empty %}
+        <p class="nodata">尚未添加题目</p>
+    {% else %}
+        <div class="row">
+            <div class="col-lg-6">
+                <table class="table data-table table-sm table-striped table-hover">
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>名称</th>
+                        <th>序号</th>
+                        <th>分数</th>
+                        <th>允许<br>提交</th>
+                        <th>开放<br>评测</th>
+                        <th>颜色</th>
+                        <th>懒评测</th>
+                        <th></th>
+                        <th></th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for problem in problems %}
+                        <tr>
+                            {% set link = path('jury_problem', {'probId': problem.probid}) %}
+                            <td><a href="{{ link }}">p{{ problem.probid }}</a></td>
+                            <td><a href="{{ link }}">{{ problem.problem.name }}</a></td>
+                            <td><a href="{{ link }}">{{ problem.shortname }}</a></td>
+                            <td><a href="{{ link }}">{{ problem.points }}</a></td>
+                            <td>
+                                {% include 'jury/partials/problem_toggle.html.twig' with {contestProblem: problem, type: 'submit', enabled: problem.allowSubmit} %}
+                            </td>
+                            <td>
+                                {% include 'jury/partials/problem_toggle.html.twig' with {contestProblem: problem, type: 'judge', enabled: problem.allowJudge} %}
+                            </td>
+                            {% if problem.color is empty %}
+                                <td><a href="{{ link }}">&nbsp;</a></td>
+                            {% else %}
+                                <td title="{{ problem.color }}">
+                                    <a href="{{ link }}">
+                                        {{ problem | problemBadge }}
+                                    </a>
+                                </td>
+                            {% endif %}
+                            <td>
+                                <a href="{{ link }}">
+                                    {{ problem.lazyEvalResults | printLazyMode }}
+                                </a>
+                            </td>
+                            <td>
+                                {% if problem.problem.problemstatementType %}
+                                    <a title="view problem statement" href="{{ path('jury_problem_statement', {'probId': problem.probid}) }}">
+                                        <i class="fas fa-file-{{ problem.problem.problemstatementType }}"></i>
+                                    </a>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if is_granted('ROLE_ADMIN') and not contest.isLocked %}
+                                    <a title="Unlink problem from contest" href="{{ path('jury_contest_problem_delete', {'contestId': contest.cid, 'probId': problem.probid}) }}"
+                                       data-ajax-modal>
+                                        <i class="fas fa-trash-alt"></i>
+                                    </a>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if is_granted('ROLE_ADMIN') %}
+                                    <a title="评测剩余测试用例" href="{{ path('jury_contest_problem_request_remaining', {'contestId': contest.cid, 'probId': problem.probid}) }}">
+                                        <i class="fas fa-gavel"></i>
+                                    </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="button-row">
+        {%- if is_granted('ROLE_ADMIN') -%}
+            {% if contest.isLocked %}
+                {{ button(path('jury_contest_unlock', {'contestId': contest.cid}), '解锁', 'danger', 'unlock') }}
+            {% else %}
+                {{ button(path('jury_contest_edit', {'contestId': contest.cid}), '编辑', 'primary', 'edit') }}
+                {{ button(path('jury_contest_delete', {'contestId': contest.cid}), '删除', 'danger', 'trash-alt', true) }}
+                {{ button(path('jury_contest_lock', {'contestId': contest.cid}), '锁定', 'secondary', 'lock') }}
+            {% endif %}
+            {{ button(path('jury_contest_request_remaining', {'contestId': contest.cid}), '评测剩余测试用例', 'secondary', 'gavel') }}
+        {% endif %}
+        {{ button(path('jury_contest_prefetch', {'contestId': contest.cid}), '预热比赛数据', 'secondary', 'download') }}
+        {% include 'jury/partials/rejudge_form.html.twig' with {table: 'contest', id: contest.cid, buttonClass: 'btn-secondary'} %}
+    </div>
+
+{% endblock %}
+
+{% block extrafooter %}
+    {{ macros.toggle_autosubmit_extrafooter() }}
+{% endblock %}

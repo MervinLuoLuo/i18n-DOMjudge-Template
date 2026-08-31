@@ -1,0 +1,25 @@
+{# Render templates that can be used to fill the submission modal or detail page #}
+<script type="text/template" id="empty-submission-list">
+    <div class="alert alert-warning">暂无提交</div>
+</script>
+<script type="text/template" id="submission-list">
+    <table
+        class="data-table table table-hover table-striped table-sm submissions-table">
+        <thead class="thead-light">
+        <tr>
+            <th scope="col">提交时间</th>
+            <th scope="col">程序语言</th>
+            <th scope="col">结果</th>
+        </tr>
+        </thead>
+        <tbody data-submission-list>
+        </tbody>
+    </table>
+</script>
+<script type="text/template" id="submission-list-item">
+    <tr>
+        <td data-time></td>
+        <td class="langid" data-language-id></td>
+        <td data-verdict></td>
+    </tr>
+</script>

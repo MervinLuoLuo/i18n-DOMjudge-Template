@@ -1,0 +1,18 @@
+<div class="row">
+    <div class="col-lg-4">
+        {{ form_start(form) }}
+        {{ form_row(form.externalid,{'label': '外部 ID','help': '留空则自动生成'}) }}
+        {% if form.offsetExists('username') %}
+            {{ form_row(form.username, {'label': '用户名'}) }}
+        {% endif %}
+        {{form_row(form.name,{'label': '全名','help': '(可选)'})}}
+        {{form_row(form.email,{'label': '邮箱'})}}
+        {{form_row(form.plainPassword,{'label': '密码', 'help': '最小长度：10 个字符'})}}
+        {{form_row(form.ipAddress,{'label': '默认 IP 地址'})}}
+        {{form_row(form.enabled,{'label': '是否启用'})}}
+        {{form_row(form.team,{'label': '所属队伍','placeholder': '-- 无队伍自由人 --'})}}
+        {{form_row(form.user_roles,{'label': '用户权限'})}}
+        {{form_row(form.save,{'label': '保存'})}}
+        {{form_end(form)}}
+    </div>
+</div>
